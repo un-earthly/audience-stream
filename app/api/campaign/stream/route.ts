@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { ExtendedStreamEvent, CampaignGenerationData } from '@/lib/types';
+import { getRandomCampaignChunks, getRandomLoremText, getRandomConcludingRemarks } from '@/lib/constants/chat';
 
 export async function POST(request: NextRequest) {
   const { query } = await request.json();
@@ -87,38 +88,54 @@ export async function POST(request: NextRequest) {
         const imgSeed = Math.floor(Math.random() * 10000);
         const images = Array.from({ length: deepthink ? 6 : 4 }).map((_, i) => `https://picsum.photos/seed/${imgSeed + i}/800/450`);
         sendEvent({ type: 'partial', message: 'generate_start', tabs: { images } as any });
-        const answerChunks = (
-          deepthink
-            ? [
-                "Here’s a deeply reasoned multi-channel campaign plan crafted for your objectives.",
-                " It integrates behavioral triggers, audience recency, and cross-channel sequencing.",
-                " We’ll orchestrate Email, SMS, and WhatsApp with staggered timings and adaptive copy.",
-                " Personalization leverages abandonment context and prior engagement intensity.",
-                " Finally, we’ll monitor micro-conversions and dynamically allocate reach.",
-              ]
-            : [
-                "Here's a tailored multi-channel campaign plan.",
-                " It targets recent cart abandoners with timely nudges.",
-                " Channels include Email, SMS, and WhatsApp.",
-                " Messages emphasize urgency and value, with a weekend offer.",
-              ]
-        );
+        const campaignChunks = getRandomCampaignChunks();
+        const loremChunks = Array.from({ length: deepthink ? 8 : 4 }, () => getRandomLoremText(3) + ' ');
+        const answerChunks = [...campaignChunks, ...loremChunks];
         let answerSoFar = '';
-        for (const chunk of answerChunks) {
-          answerSoFar += chunk;
-          sendEvent({ type: 'partial', message: 'generate_progress', tabs: { answer: answerSoFar } as any });
-          await new Promise(resolve => setTimeout(resolve, 120));
-        }
+        const streamTextWordByWord = async (chunks: readonly string[]) => {
+          for (const chunk of chunks) {
+            const words = chunk.trim().split(' ');
+            for (const word of words) {
+              answerSoFar += word + ' ';
+              sendEvent({ type: 'partial', message: 'generate_progress', tabs: { answer: answerSoFar } as any });
+              await new Promise(resolve => setTimeout(resolve, Math.random() * 80 + 30)); // 30-110ms delay
+            }
+            // Add a paragraph break after each major chunk/sentence
+            answerSoFar += '\n\n';
+            sendEvent({ type: 'partial', message: 'generate_progress', tabs: { answer: answerSoFar } as any });
+            await new Promise(resolve => setTimeout(resolve, 200)); // Longer pause for paragraph
+          }
+        };
 
-        // Step 1: Generate name
+        // Send init block
+        sendEvent({ type: 'partial', block: 'init' });
+
+        // Stream paragraphs as blocks
+        const streamParagraphBlocks = async (chunks: readonly string[]) => {
+          for (const chunk of chunks) {
+            sendEvent({ 
+              type: 'partial', 
+              block: 'para', 
+              content: chunk.trim()
+            });
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 300 + 200));
+          }
+        };
+
+        await streamParagraphBlocks(answerChunks);
+
+        // Start artifact generation
         await new Promise(resolve => setTimeout(resolve, 150));
+        sendEvent({ type: 'partial', block: 'artifact_start' });
+        
         const namePool = ["Weekend Flash Sale", "Holiday Collection Launch", "VIP Loyalty Event", "Back-to-Stock Drive", "Cart Recovery Sprint"];
         campaignData.campaign.name = namePool[Math.floor(Math.random() * namePool.length)];
+        
+        // Send artifact chunk
         sendEvent({
           type: 'partial',
-          field: 'name',
-          value: campaignData.campaign.name,
-          data: { campaign: { name: campaignData.campaign.name } },
+          block: 'artifact_chunk',
+          artifact: { campaign: { name: campaignData.campaign.name } }
         });
 
         // Step 2: Generate audience
@@ -129,16 +146,17 @@ export async function POST(request: NextRequest) {
           "New subscribers in last 14 days",
         ];
         campaignData.campaign.audience = deepthink ? audiences.sort(() => Math.random() - 0.5)[Math.floor(Math.random() * 4)] : audiences[Math.floor(Math.random() * 4)];
+        
+        // Send artifact chunk
         sendEvent({
           type: 'partial',
-          field: 'audience',
-          value: campaignData.campaign.audience,
-          data: {
+          block: 'artifact_chunk',
+          artifact: { 
             campaign: {
               name: campaignData.campaign.name,
               audience: campaignData.campaign.audience,
-            },
-          },
+            }
+          }
         });
 
         // Step 2.5: Generate target (who the campaign is for)
@@ -150,32 +168,10 @@ export async function POST(request: NextRequest) {
           'Recent social engagers',
         ];
         campaignData.campaign.target = targets[Math.floor(Math.random() * targets.length)];
-        sendEvent({
-          type: 'partial',
-          field: 'target',
-          value: campaignData.campaign.target,
-          data: {
-            campaign: {
-              target: campaignData.campaign.target,
-            },
-          },
-        });
 
         // Step 3: Generate channels
         await new Promise(resolve => setTimeout(resolve, 120));
         campaignData.campaign.channels = randomChannels();
-        sendEvent({
-          type: 'partial',
-          field: 'channels',
-          value: campaignData.campaign.channels,
-          data: {
-            campaign: {
-              name: campaignData.campaign.name,
-              audience: campaignData.campaign.audience,
-              channels: campaignData.campaign.channels,
-            },
-          },
-        });
 
         // Step 4: Generate message
         await new Promise(resolve => setTimeout(resolve, 180));
@@ -186,19 +182,6 @@ export async function POST(request: NextRequest) {
           "Limited-time relaunch: finalize your order and enjoy free shipping.",
         ];
         campaignData.campaign.message = msgPool[Math.floor(Math.random() * msgPool.length)];
-        sendEvent({
-          type: 'partial',
-          field: 'message',
-          value: campaignData.campaign.message,
-          data: {
-            campaign: {
-              name: campaignData.campaign.name,
-              audience: campaignData.campaign.audience,
-              channels: campaignData.campaign.channels,
-              message: campaignData.campaign.message,
-            },
-          },
-        });
 
         // Step 5: Generate timing and meta
         await new Promise(resolve => setTimeout(resolve, 120));
@@ -209,7 +192,51 @@ export async function POST(request: NextRequest) {
           estimated_reach: randomReach(),
         };
 
-        sendEvent({ type: 'partial', message: 'tabs_update', tabs: { answer: answerSoFar } as any });
+        // Send final artifact
+        sendEvent({
+          type: 'partial',
+          block: 'artifact_end',
+          artifact: campaignData
+        });
+
+        // Send UI component for configurator
+        sendEvent({ 
+          type: 'partial', 
+          tabs: { 
+            uiComponent: {
+              type: 'campaign_configurator',
+              data: campaignData,
+              title: 'Campaign Configuration Ready',
+              description: 'I\'ve generated a comprehensive campaign strategy based on your requirements.'
+            }
+          } as any 
+        });
+
+        // Send suggestions block
+        const suggestions = [
+          "Generate creatives for WhatsApp",
+          "Set up A/B test for SMS copy", 
+          "Schedule push notifications for Fridays",
+          "Create audience lookalikes",
+          "Export campaign to your platform"
+        ];
+        sendEvent({
+          type: 'partial',
+          block: 'sugg',
+          suggestions: suggestions.slice(0, 3) // Random 3 suggestions
+        });
+
+        // Send conclusion block
+        const concludingChunks = getRandomConcludingRemarks();
+        for (const chunk of concludingChunks) {
+          sendEvent({
+            type: 'partial',
+            block: 'conclusion',
+            content: chunk.trim()
+          });
+          await new Promise(resolve => setTimeout(resolve, Math.random() * 200 + 100));
+        }
+
         sendEvent({ type: 'complete', data: campaignData });
 
         if (heartbeat) clearInterval(heartbeat);

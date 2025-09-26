@@ -86,6 +86,7 @@ export interface DataSource {
 
 // Streaming event types for campaign generation
 export type StreamEventType = "start" | "partial" | "complete" | "error";
+export type StreamBlockType = "init" | "para" | "artifact_start" | "artifact_chunk" | "artifact_end" | "sum" | "sugg" | "conclusion";
 
 export interface CampaignGenerationData {
   campaign: Partial<Campaign>;
@@ -118,7 +119,24 @@ export interface TabsData {
   sources?: SourceLink[];
   thoughts?: ThoughtItem[];
   feedback?: 'up' | 'down' | null;
+  suggestions?: string[];
+  summary?: string;
+  // Streamed, ordered render blocks for fine-grained UI composition
+  blocks?: RenderBlock[];
+  uiComponent?: {
+    type: 'campaign_configurator';
+    data: unknown;
+    title?: string;
+    description?: string;
+  };
 }
+
+export type RenderBlock =
+  | { kind: 'para'; content: string }
+  | { kind: 'artifact_indicator'; title?: string; description?: string }
+  | { kind: 'summary'; content: string }
+  | { kind: 'suggestions'; suggestions: string[] }
+  | { kind: 'conclusion'; content: string };
 
 export type PhaseEventType =
   | 'thinking_start'
@@ -135,6 +153,10 @@ export type PhaseEventType =
 export type ExtendedStreamEvent = StreamEvent & {
   phase?: PhaseEventType;
   tabs?: TabsData;
+  block?: StreamBlockType;
+  content?: string;
+  artifact?: unknown;
+  suggestions?: string[];
 };
 export interface StatCard {
   label: string;

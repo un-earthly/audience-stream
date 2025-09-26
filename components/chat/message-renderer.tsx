@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { ChatMessage } from "@/lib/types";
 import { StepsCollapsible } from "./steps-collapsible";
-import { MessageTabs } from "./message-tabs";
+import { CampaignConfigurator } from "./campaign-configurator";
 
 interface MessageRendererProps {
     message: ChatMessage;
@@ -17,6 +17,23 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
     const dispatch = useAppDispatch();
     const { executions } = useAppSelector((state) => state.steps);
     const execution = executions.find((e) => e.messageId === message.id);
+    // Use the full streamed answer stored in tabs for assistant messages
+    const tabsForMessage = useAppSelector((s) => s.tabs[message.id]);
+
+    // Debug: log what the renderer receives for this message
+    React.useEffect(() => {
+        // eslint-disable-next-line no-console
+        console.log('[MessageRenderer] update', {
+            messageId: message.id,
+            type: message.type,
+            streaming: message.streaming,
+            content: message.content,
+            jsonData: message.jsonData,
+            tabs: tabsForMessage,
+            uiComponent: tabsForMessage?.uiComponent,
+            answerLen: tabsForMessage?.answer?.length ?? 0,
+        });
+    }, [message.id, message.type, message.streaming, message.content, message.jsonData, tabsForMessage]);
 
     const isUser = message.type === "user";
     const [isEditing, setIsEditing] = React.useState(false);
@@ -87,16 +104,63 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
 
                         </div>
                     )}
-                    {!isUser && message.content && (
+                    {!isUser && (
                         <div className="prose prose-sm max-w-none dark:prose-invert">
-                            {message.content}
-                            {message.streaming && (
-                                <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
-                            )}
-                            {/* Perplexity-like tabs */}
-                            {!isUser && (
-                                <div className="mt-4">
-                                    <MessageTabs messageId={message.id} jsonData={message.jsonData} />
+                            {Array.isArray(tabsForMessage?.blocks) && tabsForMessage!.blocks!.length > 0 ? (
+                                <div>
+                                    {tabsForMessage!.blocks!.map((b, i) => {
+                                        switch (b.kind) {
+                                            case 'para':
+                                                return (
+                                                    <p key={`para-${i}`} className="whitespace-pre-wrap">{b.content}</p>
+                                                );
+                                            case 'artifact_indicator':
+                                                return (
+                                                    <div key={`artifact-${i}`} className="mt-3">
+                                                        <CampaignConfigurator
+                                                            jsonData={(tabsForMessage?.uiComponent?.data) ?? (message.jsonData as any)?.uiComponent?.data}
+                                                            title={b.title ?? (tabsForMessage?.uiComponent?.title) ?? (message.jsonData as any)?.uiComponent?.title}
+                                                            description={b.description ?? (tabsForMessage?.uiComponent?.description) ?? (message.jsonData as any)?.uiComponent?.description}
+                                                        />
+                                                    </div>
+                                                );
+                                            case 'summary':
+                                                return (
+                                                    <div key={`summary-${i}`} className="mt-3">
+                                                        <h4 className="mt-2 mb-1">Summary</h4>
+                                                        <p className="whitespace-pre-wrap">{b.content}</p>
+                                                    </div>
+                                                );
+                                            case 'suggestions':
+                                                return (
+                                                    <div key={`sugg-${i}`} className="mt-3">
+                                                        <h4 className="mt-2 mb-1">Suggested next steps</h4>
+                                                        <ul className="list-disc pl-5">
+                                                            {b.suggestions.map((s, idx) => (
+                                                                <li key={idx}>{s}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                );
+                                            case 'conclusion':
+                                                return (
+                                                    <p key={`conclusion-${i}`} className="whitespace-pre-wrap">{b.content}</p>
+                                                );
+                                            default:
+                                                return null;
+                                        }
+                                    })}
+                                    {message.streaming && (
+                                        <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1 align-middle" />
+                                    )}
+                                </div>
+                            ) : (
+                                // Fallback to string answer/content if blocks are not present
+                                <div className="whitespace-pre-wrap">
+                                    {(tabsForMessage?.answer ?? message.content) || ""}
+                                    {message.streaming && (
+                                        <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1 align-middle" />
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -113,8 +177,16 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                         <span
                             role="button"
                             tabIndex={0}
-                            onClick={() => copyText(isEditing ? editValue : message.content)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') copyText(isEditing ? editValue : message.content); }}
+                            onClick={() => {
+                                const textToCopy = isUser ? (isEditing ? editValue : message.content) : (tabsForMessage?.answer ?? message.content);
+                                copyText(textToCopy);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    const textToCopy = isUser ? (isEditing ? editValue : message.content) : (tabsForMessage?.answer ?? message.content);
+                                    copyText(textToCopy);
+                                }
+                            }}
                             title={copied ? "Copied" : "Copy"}
                             aria-label="Copy message"
                             className="inline-flex cursor-pointer items-center text-foreground/70 hover:text-foreground transition-colors"
@@ -127,8 +199,16 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                             <span
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => downloadText(message.content, isSystem ? 'system' : 'assistant')}
-                                onKeyDown={(e) => { if (e.key === 'Enter') downloadText(message.content, isSystem ? 'system' : 'assistant'); }}
+                                onClick={() => {
+                                    const textToDownload = tabsForMessage?.answer ?? message.content;
+                                    downloadText(textToDownload, isSystem ? 'system' : 'assistant');
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        const textToDownload = tabsForMessage?.answer ?? message.content;
+                                        downloadText(textToDownload, isSystem ? 'system' : 'assistant');
+                                    }
+                                }}
                                 title="Download"
                                 aria-label="Download message"
                                 className="inline-flex cursor-pointer items-center text-foreground/70 hover:text-foreground transition-colors"

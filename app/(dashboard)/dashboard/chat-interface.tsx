@@ -14,6 +14,7 @@ import { toggleDeepthink, toggleWebSearch, toggleHints, addAttachments as addAtt
 import { ChatComposer } from "@/components/chat/chat-composer";
 import { AttachmentPreview } from "@/components/chat/attachment-preview";
 import { WelcomeMessage } from "@/components/chat/welcome-message";
+import { CampaignJsonPanel } from "@/components/chat/campaign-json-panel";
 import { CHAT_CONFIG, UI_MESSAGES, getRandomResponseTemplate } from "@/lib/constants/chat";
 import { createConversation, setActiveConversation, addMessageToConversation, renameConversation } from "@/lib/features/chat/historySlice";
 import type { ChatMessage } from "@/lib/types";
@@ -277,10 +278,12 @@ export function ChatInterface() {
         }
     };
 
+    const { isJsonPanelOpen } = useAppSelector((s) => s.chatUi);
+
     return (
         <div className="min-h-screen relative flex flex-col">
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 pb-4 space-y-6 w-full max-w-5xl mx-auto">
+            <div className="flex-1 overflow-y-auto p-6 pb-4 space-y-6 w-full max-w-5xl mx-auto transition-all duration-300">
                 {messages.length === 1 && <WelcomeMessage />}
 
                 {messages.slice(1).map((message, index) => (
@@ -389,6 +392,7 @@ export function ChatInterface() {
             />
             {/* Mount the headless step executor to run step flows */}
             <StepExecutor />
+            <CampaignJsonPanel />
         </div>
     );
 }

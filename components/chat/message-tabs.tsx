@@ -5,8 +5,9 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { StepsCollapsible } from "./steps-collapsible";
-import { Brain, Clock, Copy, Eye, EyeOff, ThumbsUp, ThumbsDown, Check, ChevronDown } from "lucide-react";
+import { Brain, Clock, Copy, Eye, EyeOff, ThumbsUp, ThumbsDown, Check, ChevronDown, FileJson } from "lucide-react";
 import { setFeedback, setAnswer, appendThoughts, appendSources, appendImages, setTabs } from "@/lib/features/chat/tabsSlice";
+import { CampaignConfigurator } from "./campaign-configurator";
 import { toast } from "sonner";
 import { getRandomCampaignChunks, getRandomLoremText } from "@/lib/constants/chat";
 import {
@@ -154,7 +155,9 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
     };
 
     // Answer streaming simulation with dynamic content
-    const chunks = getRandomCampaignChunks();
+    const campaignChunks = getRandomCampaignChunks();
+    const loremChunks = Array.from({ length: 5 }, () => getRandomLoremText(3) + ' ');
+    const chunks = [...campaignChunks, ...loremChunks];
     let idx = 0;
     answerIntervalRef.current = setInterval(() => {
       const chatState = chatRef.current;
@@ -185,7 +188,7 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
       }
       answerBufferRef.current += chunks[idx++];
       dispatch(setAnswer({ messageId, answer: answerBufferRef.current }));
-    }, 700);
+    }, Math.random() * 200 + 100); // Faster, more dynamic interval
 
     // Thoughts streaming simulation with dynamic content
     const thoughtPhrases = [
@@ -331,14 +334,20 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
           <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
             {tabs?.answer ?? "Generating answer..."}
           </div>
-          {jsonData != null && (
-            <div>
-              <div className="text-sm font-medium mb-1">Campaign JSON</div>
-              <div>
-                <pre className="text-xs overflow-x-auto bg-background p-3 rounded-md border">
-                  {typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData, null, 2)}
-                </pre>
-              </div>
+          {tabs?.summary && (
+            <div className="mt-3 prose prose-sm dark:prose-invert max-w-none">
+              <h4 className="mt-2 mb-1">Summary</h4>
+              <p className="whitespace-pre-wrap">{tabs.summary}</p>
+            </div>
+          )}
+          {tabs?.suggestions && tabs.suggestions.length > 0 && (
+            <div className="mt-3 prose prose-sm dark:prose-invert max-w-none">
+              <h4 className="mt-2 mb-1">Suggested next steps</h4>
+              <ul className="list-disc pl-5">
+                {tabs.suggestions.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

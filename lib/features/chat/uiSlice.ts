@@ -25,6 +25,8 @@ export interface ChatUiState {
   preview: PreviewState;
   editingConversationId: string | null;
   newConversationTitle: string;
+  isJsonPanelOpen: boolean;
+  jsonPanelData: unknown;
 }
 
 const persisted = storage.get<Partial<ChatUiState>>(PERSIST_KEYS.chat_ui, {} as any);
@@ -44,6 +46,8 @@ const initialState: ChatUiState = {
   },
   editingConversationId: null,
   newConversationTitle: '',
+  isJsonPanelOpen: false,
+  jsonPanelData: null,
 };
 
 const persist = (state: ChatUiState) => {
@@ -103,6 +107,18 @@ export const chatUiSlice = createSlice({
       state.editingConversationId = null;
       state.newConversationTitle = '';
     },
+    openJsonPanel(state, action: PayloadAction<unknown>) {
+      state.isJsonPanelOpen = true;
+      state.jsonPanelData = action.payload;
+    },
+    closeJsonPanel(state) {
+      state.isJsonPanelOpen = false;
+    },
+    updateJsonPanelData(state, action: PayloadAction<unknown>) {
+      if (state.isJsonPanelOpen) {
+        state.jsonPanelData = action.payload;
+      }
+    },
   }
 });
 
@@ -119,6 +135,9 @@ export const {
   startEditingConversation,
   updateConversationTitle,
   stopEditingConversation,
+  openJsonPanel,
+  closeJsonPanel,
+  updateJsonPanelData,
 } = chatUiSlice.actions;
 
 export default chatUiSlice.reducer;

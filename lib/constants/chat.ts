@@ -134,8 +134,36 @@ export const getRandomCampaignChunks = () => {
   return CAMPAIGN_RESPONSE_CHUNKS[randomIndex];
 };
 
+// Concluding remarks for streaming after JSON
+export const CONCLUDING_REMARKS_CHUNKS = [
+  [
+    "This campaign is now fully configured and ready for your review. ",
+    "I've optimized the audience targeting and channel mix based on the latest data. ",
+    "You can adjust any of the parameters in the campaign builder before launching. ",
+    "Let me know if you'd like to proceed or if you have any further refinements in mind. Good luck!",
+  ],
+  [
+    "The campaign strategy has been generated successfully. ",
+    "The provided JSON contains all the necessary details for execution. ",
+    "I recommend reviewing the message copy and audience segments closely. ",
+    "Feel free to ask for any modifications or alternative suggestions. Ready when you are!",
+  ],
+  [
+    "Your new campaign blueprint is complete. ",
+    "I've included a mix of high-impact channels and personalized messaging to maximize ROI. ",
+    "Please verify the timing and budget allocation before activation. ",
+    "I'm here to assist with any further adjustments or to start a new campaign from scratch.",
+  ],
+] as const;
+
 // Helper function to get random lorem text
 export const getRandomLoremText = (count: number = 1) => {
   const shuffled = [...LOREM_VARIATIONS].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count).join(' ');
+};
+
+// Helper function to get random concluding remarks
+export const getRandomConcludingRemarks = () => {
+  const randomIndex = Math.floor(Math.random() * CONCLUDING_REMARKS_CHUNKS.length);
+  return CONCLUDING_REMARKS_CHUNKS[randomIndex];
 };
