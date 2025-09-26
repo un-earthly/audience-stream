@@ -4,21 +4,24 @@ import { FileJson, Settings, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAppDispatch } from "@/lib/hooks";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { openJsonPanel } from "@/lib/features/chat/uiSlice";
 
 interface CampaignConfiguratorProps {
   jsonData: unknown;
   title?: string;
   description?: string;
+  messageId?: string;
 }
 
 export function CampaignConfigurator({ 
   jsonData, 
   title = "Campaign Configuration Ready",
-  description = "I've generated a comprehensive campaign strategy based on your requirements. Click below to view the live configuration details."
+  description = "I've generated a comprehensive campaign strategy based on your requirements. Click below to view the live configuration details.",
+  messageId,
 }: CampaignConfiguratorProps) {
   const dispatch = useAppDispatch();
+  const { activeConversationId } = useAppSelector((s) => s.history);
 
   return (
     <Card className="my-4 border-primary/20 bg-primary/5">
@@ -49,7 +52,10 @@ export function CampaignConfigurator({
             </div>
             
             <Button 
-              onClick={() => dispatch(openJsonPanel(jsonData))}
+              onClick={() => {
+                if (!activeConversationId || !messageId) return;
+                dispatch(openJsonPanel({ conversationId: activeConversationId, messageId, data: jsonData }));
+              }}
               className="w-full sm:w-auto"
               size="sm"
             >

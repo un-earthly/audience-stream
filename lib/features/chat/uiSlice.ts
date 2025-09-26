@@ -26,7 +26,8 @@ export interface ChatUiState {
   editingConversationId: string | null;
   newConversationTitle: string;
   isJsonPanelOpen: boolean;
-  jsonPanelData: unknown;
+  // Session-scoped JSON artifacts by conversation
+  panelDataByConversation: Record<string, { messageId: string; data: unknown } | null>;
 }
 
 const persisted = storage.get<Partial<ChatUiState>>(PERSIST_KEYS.chat_ui, {} as any);
@@ -47,7 +48,7 @@ const initialState: ChatUiState = {
   editingConversationId: null,
   newConversationTitle: '',
   isJsonPanelOpen: false,
-  jsonPanelData: null,
+  panelDataByConversation: {},
 };
 
 const persist = (state: ChatUiState) => {
@@ -107,17 +108,17 @@ export const chatUiSlice = createSlice({
       state.editingConversationId = null;
       state.newConversationTitle = '';
     },
-    openJsonPanel(state, action: PayloadAction<unknown>) {
+    openJsonPanel(state, action: PayloadAction<{ conversationId: string; messageId: string; data: unknown }>) {
       state.isJsonPanelOpen = true;
-      state.jsonPanelData = action.payload;
+      const { conversationId, messageId, data } = action.payload;
+      state.panelDataByConversation[conversationId] = { messageId, data };
     },
     closeJsonPanel(state) {
       state.isJsonPanelOpen = false;
     },
-    updateJsonPanelData(state, action: PayloadAction<unknown>) {
-      if (state.isJsonPanelOpen) {
-        state.jsonPanelData = action.payload;
-      }
+    updateJsonPanelData(state, action: PayloadAction<{ conversationId: string; messageId: string; data: unknown }>) {
+      const { conversationId, messageId, data } = action.payload;
+      state.panelDataByConversation[conversationId] = { messageId, data };
     },
   }
 });

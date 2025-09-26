@@ -12,7 +12,9 @@ import { toast } from "sonner";
 
 export function CampaignJsonPanel() {
   const dispatch = useAppDispatch();
-  const { isJsonPanelOpen, jsonPanelData } = useAppSelector((state) => state.chatUi);
+  const { isJsonPanelOpen, panelDataByConversation } = useAppSelector((state) => state.chatUi);
+  const { activeConversationId } = useAppSelector((s) => s.history);
+  const sessionData = activeConversationId ? panelDataByConversation[activeConversationId]?.data : null;
   const [width, setWidth] = useState(500);
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -81,7 +83,19 @@ export function CampaignJsonPanel() {
                     className="h-8 w-8 p-0"
                     onClick={() => {
                       try {
-                        const text = JSON.stringify(jsonPanelData, null, 2);
+                        const artifact = (() => {
+                          const raw: any = sessionData ?? {};
+                          // Prefer inner artifact if stored under uiComponent.data
+                          const inner = raw?.uiComponent?.data ?? raw;
+                          // Drop ui-related keys and only keep campaign subtree if present
+                          if (inner && typeof inner === 'object') {
+                            const { uiComponent, ...rest } = inner;
+                            if (rest?.campaign) return { campaign: rest.campaign };
+                            return rest;
+                          }
+                          return inner;
+                        })();
+                        const text = JSON.stringify(artifact, null, 2);
                         navigator.clipboard.writeText(text);
                         toast.success("Copied configuration");
                       } catch {
@@ -102,10 +116,20 @@ export function CampaignJsonPanel() {
                     className="h-8 w-8 p-0"
                     onClick={() => {
                       try {
-                        const blob = new Blob([JSON.stringify(jsonPanelData, null, 2)], { type: 'application/json' });
+                        const artifact = (() => {
+                          const raw: any = sessionData ?? {};
+                          const inner = raw?.uiComponent?.data ?? raw;
+                          if (inner && typeof inner === 'object') {
+                            const { uiComponent, ...rest } = inner;
+                            if (rest?.campaign) return { campaign: rest.campaign };
+                            return rest;
+                          }
+                          return inner;
+                        })();
+                        const blob = new Blob([JSON.stringify(artifact, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
-                        const name = (jsonPanelData as any)?.campaign?.name || 'campaign-config';
+                        const name = ((artifact as any)?.campaign?.name) || 'campaign-config';
                         a.href = url;
                         a.download = `${name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
                         document.body.appendChild(a);
@@ -137,9 +161,23 @@ export function CampaignJsonPanel() {
 
         {/* Content */}
         <ScrollArea className="flex-1 p-4">
-          <pre className="text-xs whitespace-pre-wrap font-mono bg-muted/30 p-4 rounded-lg">
-            {JSON.stringify(jsonPanelData, null, 2)}
-          </pre>
+          {(() => {
+            const raw: any = sessionData ?? {};
+            const inner = raw?.uiComponent?.data ?? raw;
+            const artifact = (() => {
+              if (inner && typeof inner === 'object') {
+                const { uiComponent, ...rest } = inner;
+                if (rest?.campaign) return { campaign: rest.campaign };
+                return rest;
+              }
+              return inner;
+            })();
+            return (
+              <pre className="text-xs whitespace-pre-wrap font-mono bg-muted/30 p-4 rounded-lg">
+                {JSON.stringify(artifact, null, 2)}
+              </pre>
+            );
+          })()}
         </ScrollArea>
       </div>
     </div>

@@ -22,10 +22,11 @@ import { ChannelGrid } from "@/components/channels/channel-grid";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { DataSource } from "@/lib/types";
 import Link from "next/link";
-import { createConversation, setActiveConversation, deleteConversation, renameConversation } from "@/lib/features/chat/historySlice";
+import { createConversation, setActiveConversation, deleteConversation, renameConversation, clearHistory } from "@/lib/features/chat/historySlice";
 import { clearChat } from "@/lib/features/chat/chatSlice";
-import { startEditingConversation, updateConversationTitle, stopEditingConversation } from "@/lib/features/chat/uiSlice";
+import { startEditingConversation, updateConversationTitle, stopEditingConversation, closeJsonPanel } from "@/lib/features/chat/uiSlice";
 import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export function DashboardSidebar() {
   const dispatch = useAppDispatch();
@@ -74,6 +75,9 @@ export function DashboardSidebar() {
     // Analytics section removed per request
   ];
 
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+
   return (
     <>
       <div className="w-80 bg-muted/30 border-r h-full overflow-y-auto">
@@ -85,6 +89,38 @@ export function DashboardSidebar() {
               Configure your marketing campaign
             </p>
           </div>
+
+      {/* Delete single conversation dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The conversation and its messages will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteId) { dispatch(deleteConversation(deleteId)); dispatch(closeJsonPanel()); setDeleteId(null); }}}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete all conversations dialog */}
+      <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all chats?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all conversations from your device. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { dispatch(clearHistory()); dispatch(closeJsonPanel()); setDeleteAllOpen(false); }}>Delete all</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
           {/* Metrics quick link */}
           <div>
@@ -145,18 +181,27 @@ export function DashboardSidebar() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Chat History</h3>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    // Start a brand new chat - don't create conversation until first message
-                    dispatch(clearChat());
-                    dispatch(setActiveConversation(''));
-                  }}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  New chat
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => setDeleteAllOpen(true)}
+                  >
+                    Delete all
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      // Start a brand new chat - don't create conversation until first message
+                      dispatch(clearChat());
+                      dispatch(setActiveConversation(''));
+                    }}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    New chat
+                  </Button>
+                </div>
               </div>
 
               {conversations.length === 0 && (
@@ -174,8 +219,8 @@ export function DashboardSidebar() {
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div 
-                          className="flex-1 cursor-pointer" 
-                          onClick={() => dispatch(setActiveConversation(c.id))}
+                          className="flex-1 min-w-0 cursor-pointer" 
+                          onClick={() => { dispatch(setActiveConversation(c.id)); dispatch(closeJsonPanel()); }}
                         >
                           {editingConversationId === c.id ? (
                             <div className="flex items-center gap-2">
@@ -219,7 +264,7 @@ export function DashboardSidebar() {
                             </div>
                           ) : (
                             <>
-                              <div className="text-sm font-medium truncate">{c.title || "Untitled chat"}</div>
+                              <div className="text-sm font-medium break-words whitespace-normal leading-snug">{c.title || "Untitled chat"}</div>
                               <div className="text-xs text-muted-foreground">
                                 {new Date(c.createdAt).toLocaleString()} • {c.messages.length} messages
                               </div>
@@ -245,9 +290,7 @@ export function DashboardSidebar() {
                               className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm('Delete this conversation?')) {
-                                  dispatch(deleteConversation(c.id));
-                                }
+                                setDeleteId(c.id);
                               }}
                             >
                               <Trash2 className="w-3 h-3" />

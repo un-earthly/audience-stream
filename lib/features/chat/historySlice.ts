@@ -19,14 +19,47 @@ const persisted = storage.get<HistoryState>(PERSIST_KEYS.chat_history, {
   activeConversationId: null,
 });
 
+// Normalize legacy history so the new renderer can hydrate fully
+const normalizeHistory = (state: HistoryState): HistoryState => {
+  const next: HistoryState = {
+    conversations: state.conversations.map((c) => {
+      const upgradedMessages = c.messages.map((m) => {
+        // Always ensure streaming=false on hydration
+        const out: ChatMessage = { ...m, streaming: false } as ChatMessage;
+        const jd: any = out.jsonData;
+        if (out.type === 'assistant') {
+          // If campaign exists but no blocks/uiComponent, synthesize minimal blocks and ui component
+          const hasCampaign = jd && typeof jd === 'object' && jd.campaign;
+          const hasBlocks = jd && Array.isArray(jd.blocks);
+          const hasUi = jd && jd.uiComponent;
+          if (hasCampaign && !hasBlocks) {
+            const blocks = [
+              { kind: 'para', content: out.content || '' },
+              { kind: 'artifact_indicator', title: 'Campaign Configuration', description: 'Generated campaign configuration' },
+            ];
+            out.jsonData = {
+              ...jd,
+              blocks,
+              uiComponent: hasUi ? jd.uiComponent : { type: 'campaign_configurator', data: { campaign: jd.campaign } },
+            };
+          }
+        }
+        return out;
+      });
+      return { ...c, messages: upgradedMessages };
+    }),
+    activeConversationId: state.activeConversationId,
+  };
+  // Persist normalized format back to storage
+  storage.set(PERSIST_KEYS.chat_history, next);
+  return next;
+};
+
 const persist = (state: HistoryState) => {
   storage.set(PERSIST_KEYS.chat_history, state);
 };
 
-const initialState: HistoryState = {
-  conversations: persisted.conversations,
-  activeConversationId: persisted.activeConversationId,
-};
+const initialState: HistoryState = normalizeHistory(persisted);
 
 export const historySlice = createSlice({
   name: "history",

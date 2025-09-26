@@ -50,6 +50,8 @@ export interface ChatMessage {
   timestamp: number;
   streaming?: boolean;
   jsonData?: unknown;
+  // Persisted render blocks for structured UI rehydration
+  blocks?: RenderBlock[];
 }
 
 export type StepStatus = "pending" | "running" | "completed" | "error";

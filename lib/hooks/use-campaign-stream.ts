@@ -14,6 +14,7 @@ export function useCampaignStream() {
   const dispatch = useAppDispatch();
   const tabsState = useAppSelector((state) => state.tabs);
   const activeConversationId = useAppSelector((s) => s.history.activeConversationId);
+  const chatMessages = useAppSelector((s) => s.chat.messages);
 
   const streamCampaign = useCallback(async (
     query: string,
@@ -122,12 +123,24 @@ export function useCampaignStream() {
                       dispatch(setAnswer({ messageId, answer: answerBuffer }));
                       blocksBuffer = [ ...(blocksBuffer ?? []), { kind: 'para' as const, content: event.content } ];
                       dispatch(setTabs({ messageId, data: { blocks: blocksBuffer } }));
+                      // Persist blocks inside jsonData for history
+                      {
+                        const jsonOut: any = { ...(partialData as any), blocks: blocksBuffer };
+                        const uiComp = tabsState[messageId]?.uiComponent;
+                        if (uiComp) jsonOut.uiComponent = uiComp;
+                        dispatch(updateMessage({ id: messageId, jsonData: jsonOut }));
+                        if (activeConversationId) {
+                          dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData: jsonOut } }));
+                        }
+                      }
                     }
                     break;
 
                   case 'artifact_start':
                     // Open the side panel and render the CampaignConfigurator card immediately in the message
-                    dispatch(openJsonPanel({}));
+                    if (activeConversationId) {
+                      dispatch(openJsonPanel({ conversationId: activeConversationId, messageId, data: {} }));
+                    }
                     {
                       const currentTabs = tabsState[messageId] || {};
                       if (!currentTabs.uiComponent) {
@@ -145,6 +158,15 @@ export function useCampaignStream() {
                       }
                       blocksBuffer = [ ...(blocksBuffer ?? []), { kind: 'artifact_indicator' as const, title: 'Campaign Configuration', description: 'Live configuration is being generated in the side panel.' } ];
                       dispatch(setTabs({ messageId, data: { blocks: blocksBuffer } }));
+                      {
+                        const jsonOut: any = { ...(partialData as any), blocks: blocksBuffer };
+                        const uiComp = tabsState[messageId]?.uiComponent;
+                        if (uiComp) jsonOut.uiComponent = uiComp;
+                        dispatch(updateMessage({ id: messageId, jsonData: jsonOut }));
+                        if (activeConversationId) {
+                          dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData: jsonOut } }));
+                        }
+                      }
                     }
                     // Persist placeholder uiComponent in message/jsonData for hydration
                     {
@@ -165,8 +187,12 @@ export function useCampaignStream() {
                   case 'artifact_chunk':
                     if (event.artifact) {
                       partialData = mergeDeep(partialData, event.artifact as any);
-                      const jsonData = partialData as any;
-                      dispatch(updateJsonPanelData(jsonData));
+                      const jsonData: any = { ...(partialData as any), blocks: blocksBuffer };
+                      const uiComp = tabsState[messageId]?.uiComponent;
+                      if (uiComp) jsonData.uiComponent = uiComp;
+                      if (activeConversationId) {
+                        dispatch(updateJsonPanelData({ conversationId: activeConversationId, messageId, data: jsonData }));
+                      }
                       dispatch(updateMessage({ id: messageId, jsonData, streaming: true }));
                       if (activeConversationId) {
                         dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData } }));
@@ -178,8 +204,10 @@ export function useCampaignStream() {
                     if (event.artifact) {
                       partialData = mergeDeep(partialData, event.artifact as any);
                       // finalize uiComponent data to full artifact for persistence
-                      const jsonData = { ...(partialData as any), uiComponent: { type: 'campaign_configurator', data: partialData } };
-                      dispatch(updateJsonPanelData(jsonData));
+                      const jsonData: any = { ...(partialData as any), uiComponent: { type: 'campaign_configurator', data: partialData }, blocks: blocksBuffer };
+                      if (activeConversationId) {
+                        dispatch(updateJsonPanelData({ conversationId: activeConversationId, messageId, data: jsonData }));
+                      }
                       dispatch(updateMessage({ id: messageId, jsonData, streaming: true }));
                       if (activeConversationId) {
                         dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData } }));
@@ -192,6 +220,15 @@ export function useCampaignStream() {
                       suggestionsBuffer = event.suggestions;
                       blocksBuffer = [ ...(blocksBuffer ?? []), { kind: 'suggestions' as const, suggestions: suggestionsBuffer } ];
                       dispatch(setTabs({ messageId, data: { suggestions: suggestionsBuffer, blocks: blocksBuffer } }));
+                      {
+                        const jsonOut: any = { ...(partialData as any), blocks: blocksBuffer };
+                        const uiComp = tabsState[messageId]?.uiComponent;
+                        if (uiComp) jsonOut.uiComponent = uiComp;
+                        dispatch(updateMessage({ id: messageId, jsonData: jsonOut }));
+                        if (activeConversationId) {
+                          dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData: jsonOut } }));
+                        }
+                      }
                     }
                     break;
 
@@ -200,6 +237,15 @@ export function useCampaignStream() {
                       summaryText = event.content;
                       blocksBuffer = [ ...(blocksBuffer ?? []), { kind: 'summary' as const, content: summaryText } ];
                       dispatch(setTabs({ messageId, data: { summary: summaryText, blocks: blocksBuffer } }));
+                      {
+                        const jsonOut: any = { ...(partialData as any), blocks: blocksBuffer };
+                        const uiComp = tabsState[messageId]?.uiComponent;
+                        if (uiComp) jsonOut.uiComponent = uiComp;
+                        dispatch(updateMessage({ id: messageId, jsonData: jsonOut }));
+                        if (activeConversationId) {
+                          dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData: jsonOut } }));
+                        }
+                      }
                     }
                     break;
 
@@ -209,6 +255,15 @@ export function useCampaignStream() {
                       dispatch(setAnswer({ messageId, answer: answerBuffer }));
                       blocksBuffer = [ ...(blocksBuffer ?? []), { kind: 'conclusion' as const, content: event.content } ];
                       dispatch(setTabs({ messageId, data: { blocks: blocksBuffer } }));
+                      {
+                        const jsonOut: any = { ...(partialData as any), blocks: blocksBuffer };
+                        const uiComp = tabsState[messageId]?.uiComponent;
+                        if (uiComp) jsonOut.uiComponent = uiComp;
+                        dispatch(updateMessage({ id: messageId, jsonData: jsonOut }));
+                        if (activeConversationId) {
+                          dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData: jsonOut } }));
+                        }
+                      }
                     }
                     break;
                 }
@@ -217,11 +272,31 @@ export function useCampaignStream() {
               switch (event.type) {
                 case 'start':
                   // Update message to show streaming started
-                  dispatch(updateMessage({
-                    id: messageId,
-                    content: 'Generating your campaign configuration...',
-                    streaming: true,
-                  }));
+                  {
+                    // Seed initial paragraph block from the assistant message content (if present)
+                    const msg = chatMessages.find(m => m.id === messageId);
+                    const initialText = msg?.content?.trim();
+                    if (initialText) {
+                      // seed local buffers
+                      if (!blocksBuffer || blocksBuffer.length === 0) {
+                        blocksBuffer = [ { kind: 'para', content: initialText } ];
+                        dispatch(setTabs({ messageId, data: { blocks: blocksBuffer } }));
+                        dispatch(setAnswer({ messageId, answer: initialText }));
+                      }
+                      const jsonOut: any = { ...(partialData as any), blocks: blocksBuffer };
+                      const uiComp = tabsState[messageId]?.uiComponent;
+                      if (uiComp) jsonOut.uiComponent = uiComp;
+                      dispatch(updateMessage({ id: messageId, jsonData: jsonOut }));
+                      if (activeConversationId) {
+                        dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData: jsonOut } }));
+                      }
+                    }
+                    dispatch(updateMessage({
+                      id: messageId,
+                      content: 'Generating your campaign configuration...',
+                      streaming: true,
+                    }));
+                  }
                   dispatch(startStreaming(messageId));
                   break;
 
@@ -231,15 +306,25 @@ export function useCampaignStream() {
                     partialData = { ...partialData, ...event.data };
 
                     // Update message with partial JSON
-                    dispatch(updateMessage({
-                      id: messageId,
-                      content: `Generating campaign... (${event.field} added)`,
-                      jsonData: partialData,
-                      streaming: true,
-                    }));
+                    {
+                      const jsonData: any = { ...(partialData as any), blocks: blocksBuffer };
+                      const uiComp = tabsState[messageId]?.uiComponent;
+                      if (uiComp) jsonData.uiComponent = uiComp;
+                      dispatch(updateMessage({
+                        id: messageId,
+                        content: `Generating campaign... (${event.field} added)`,
+                        jsonData,
+                        streaming: true,
+                      }));
+                      if (activeConversationId) {
+                        dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData } }));
+                      }
+                    }
 
-                    // Update panel data (panel should already be open from json_generation_start)
-                    dispatch(updateJsonPanelData(partialData));
+                    // Update panel data (panel should already be open)
+                    if (activeConversationId) {
+                      dispatch(updateJsonPanelData({ conversationId: activeConversationId, messageId, data: { ...(partialData as any), blocks: blocksBuffer } }));
+                    }
                     onProgress?.(partialData);
                   }
                   break;
@@ -247,18 +332,25 @@ export function useCampaignStream() {
                 case 'complete':
                   // Final complete data
                   if (event.data) {
+                    // Merge any final data into partialData
+                    partialData = { ...partialData, ...event.data };
+                    const finalJson: any = { ...(partialData as any), blocks: blocksBuffer };
+                    const uiComp = tabsState[messageId]?.uiComponent;
+                    if (uiComp) finalJson.uiComponent = uiComp;
                     dispatch(updateMessage({
                       id: messageId,
                       content: 'Campaign generation complete! Here\'s your configuration:',
-                      jsonData: event.data,
+                      jsonData: finalJson,
                       streaming: false,
                     }));
-
-                    onProgress?.(event.data);
+                    if (activeConversationId) {
+                      dispatch(updateMessageInConversation({ conversationId: activeConversationId, messageId, patch: { jsonData: finalJson, streaming: false } }));
+                      // Update panel session data to the final snapshot
+                      dispatch(updateJsonPanelData({ conversationId: activeConversationId, messageId, data: finalJson }));
+                    }
                   }
                   dispatch(stopStreaming());
                   break;
-
                 case 'error':
                   dispatch(updateMessage({
                     id: messageId,
@@ -282,7 +374,7 @@ export function useCampaignStream() {
         streaming: false,
       }));
     }
-  }, [dispatch, tabsState]);
+  }, [dispatch, tabsState, activeConversationId, chatMessages]);
 
   return { streamCampaign };
 }

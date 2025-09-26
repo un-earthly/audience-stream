@@ -50,7 +50,9 @@ export function ChatInterface() {
         // Reset chat slice to initial and then load conversation messages
         dispatch(clearChat());
         for (const m of conv.messages) {
-            dispatch(addMessage(m));
+            // Do NOT auto-stream on hydration; ensure streaming is false
+            const hydrated = { ...m, streaming: false } as ChatMessage;
+            dispatch(addMessage(hydrated));
         }
         // Scroll after hydration
         setTimeout(scrollToBottom, 0);
@@ -125,6 +127,12 @@ export function ChatInterface() {
             type: "assistant",
             content: template.initial,
             streaming: true,
+            jsonData: {
+                // Seed initial block so history always contains the first paragraph
+                blocks: [
+                    { kind: 'para', content: template.initial }
+                ],
+            },
         };
         dispatch(addMessage(assistantMsg));
         if (convId) {

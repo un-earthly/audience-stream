@@ -19,6 +19,7 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
     const execution = executions.find((e) => e.messageId === message.id);
     // Use the full streamed answer stored in tabs for assistant messages
     const tabsForMessage = useAppSelector((s) => s.tabs[message.id]);
+    const { activeConversationId } = useAppSelector((s) => s.history);
 
     // Debug: log what the renderer receives for this message
     React.useEffect(() => {
@@ -106,9 +107,14 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                     )}
                     {!isUser && (
                         <div className="prose prose-sm max-w-none dark:prose-invert">
-                            {Array.isArray(tabsForMessage?.blocks) && tabsForMessage!.blocks!.length > 0 ? (
+                            {(() => {
+                                const persistedBlocks = (message.jsonData as any)?.blocks as any[] | undefined;
+                                const blocks = (tabsForMessage?.blocks && tabsForMessage.blocks.length > 0)
+                                  ? tabsForMessage.blocks
+                                  : (Array.isArray(persistedBlocks) ? persistedBlocks : []);
+                                return Array.isArray(blocks) && blocks.length > 0 ? (
                                 <div>
-                                    {tabsForMessage!.blocks!.map((b, i) => {
+                                    {blocks.map((b, i) => {
                                         switch (b.kind) {
                                             case 'para':
                                                 return (
@@ -118,9 +124,10 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                                                 return (
                                                     <div key={`artifact-${i}`} className="mt-3">
                                                         <CampaignConfigurator
-                                                            jsonData={(tabsForMessage?.uiComponent?.data) ?? (message.jsonData as any)?.uiComponent?.data}
+                                                            jsonData={(message.jsonData as any) ?? (message.jsonData as any)?.uiComponent?.data ?? tabsForMessage?.uiComponent?.data}
                                                             title={b.title ?? (tabsForMessage?.uiComponent?.title) ?? (message.jsonData as any)?.uiComponent?.title}
                                                             description={b.description ?? (tabsForMessage?.uiComponent?.description) ?? (message.jsonData as any)?.uiComponent?.description}
+                                                            messageId={message.id}
                                                         />
                                                     </div>
                                                 );
@@ -136,7 +143,7 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                                                     <div key={`sugg-${i}`} className="mt-3">
                                                         <h4 className="mt-2 mb-1">Suggested next steps</h4>
                                                         <ul className="list-disc pl-5">
-                                                            {b.suggestions.map((s, idx) => (
+                                                            {(b as any).suggestions.map((s: string, idx: number) => (
                                                                 <li key={idx}>{s}</li>
                                                             ))}
                                                         </ul>
@@ -154,7 +161,7 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                                         <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1 align-middle" />
                                     )}
                                 </div>
-                            ) : (
+                                ) : (
                                 // Fallback to string answer/content if blocks are not present
                                 <div className="whitespace-pre-wrap">
                                     {(tabsForMessage?.answer ?? message.content) || ""}
@@ -162,7 +169,10 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                                         <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1 align-middle" />
                                     )}
                                 </div>
-                            )}
+                                );
+                            })()}
+
+                            {/* No extra button; panel opens via CampaignConfigurator's 'View Live Configuration' */}
                         </div>
                     )}
                 </Card>
