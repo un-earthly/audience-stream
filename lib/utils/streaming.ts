@@ -1,4 +1,4 @@
-import { AppDispatch } from "../store";
+import { AppDispatch, Campaign, CampaignGenerationData } from "@/lib/types";
 import { updateMessage, stopStreaming } from "../features/chat/chatSlice";
 import {
   setCurrentCampaign,
@@ -53,7 +53,7 @@ export async function simulateStreamingResponse(
     campaignTemplates[Math.floor(Math.random() * campaignTemplates.length)];
 
   // Generate campaign based on user input
-  const campaign = {
+  const campaign: Campaign = {
     id: `campaign_${Date.now()}`,
     ...template,
     name: extractCampaignName(userInput) || template.name,
@@ -96,16 +96,34 @@ export async function simulateStreamingResponse(
     "message",
     "timing",
     "meta",
-  ];
-  let partialJson: any = {};
+  ] as const;
+
+  let partialJson: CampaignGenerationData = { campaign: {} };
 
   for (const key of jsonKeys) {
     if (key === "campaign") {
       partialJson = { campaign: {} };
-    } else if (key === "meta") {
-      partialJson.campaign.meta = campaign.meta;
     } else {
-      partialJson.campaign[key] = campaign[key as keyof typeof campaign];
+      switch (key) {
+        case "name":
+          (partialJson.campaign as Partial<Campaign>).name = campaign.name;
+          break;
+        case "audience":
+          (partialJson.campaign as Partial<Campaign>).audience = campaign.audience;
+          break;
+        case "channels":
+          (partialJson.campaign as Partial<Campaign>).channels = campaign.channels;
+          break;
+        case "message":
+          (partialJson.campaign as Partial<Campaign>).message = campaign.message;
+          break;
+        case "timing":
+          (partialJson.campaign as Partial<Campaign>).timing = campaign.timing;
+          break;
+        case "meta":
+          (partialJson.campaign as Partial<Campaign>).meta = campaign.meta;
+          break;
+      }
     }
 
     dispatch(

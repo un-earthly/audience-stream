@@ -17,10 +17,11 @@ import { ConnectionModal } from "@/components/connections/connection-modal";
 import { ChannelGrid } from "@/components/channels/channel-grid";
 import { LiveAnalytics } from "@/components/analytics/live-analytics";
 import { useAppSelector } from "@/lib/hooks";
+import { DataSource } from "@/lib/types";
 
 export function DashboardSidebar() {
   const [activeSection, setActiveSection] = useState<string | null>("connections");
-  const [selectedDataSource, setSelectedDataSource] = useState(null);
+  const [selectedDataSource, setSelectedDataSource] = useState<DataSource | null>(null);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   
   const { dataSources } = useAppSelector((state) => state.connections);
@@ -29,7 +30,7 @@ export function DashboardSidebar() {
 
   const connectedSources = dataSources.filter(ds => ds.status === "connected");
 
-  const handleConnectSource = (source: any) => {
+  const handleConnectSource = (source: DataSource) => {
     setSelectedDataSource(source);
     setShowConnectionModal(true);
   };
@@ -203,7 +204,7 @@ export function DashboardSidebar() {
                     {currentCampaign.name}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Reach: {currentCampaign.meta.estimated_reach.toLocaleString()}
+                    Reach: {currentCampaign.meta?.estimated_reach?.toLocaleString() || 'N/A'}
                   </div>
                 </CardContent>
               </Card>

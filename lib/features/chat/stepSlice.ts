@@ -1,22 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-
-export interface Step {
-  id: string
-  title: string
-  description: string
-  status: 'pending' | 'running' | 'completed' | 'error'
-  progress: number
-  result?: any
-  error?: string
-}
-
-export interface StepExecution {
-  id: string
-  messageId: string
-  steps: Step[]
-  currentStepIndex: number
-  isRunning: boolean
-}
+import { Step, StepExecution } from '@/lib/types'
 
 interface StepState {
   executions: StepExecution[]
@@ -48,7 +31,7 @@ export const stepSlice = createSlice({
       state.executions.push(execution)
       state.currentExecution = execution.id
     },
-    updateStepStatus: (state, action: PayloadAction<{ executionId: string; stepId: string; status: Step['status']; progress?: number; result?: any; error?: string }>) => {
+    updateStepStatus: (state, action: PayloadAction<{ executionId: string; stepId: string; status: Step['status']; progress?: number; result?: unknown; error?: string }>) => {
       const execution = state.executions.find(e => e.id === action.payload.executionId)
       if (execution) {
         const step = execution.steps.find(s => s.id === action.payload.stepId)

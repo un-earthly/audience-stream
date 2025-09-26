@@ -1,16 +1,8 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-
-export interface Message {
-  id: string;
-  type: "user" | "assistant" | "system";
-  content: string;
-  timestamp: number;
-  streaming?: boolean;
-  jsonData?: any;
-}
+import { ChatMessage } from "@/lib/types";
 
 interface ChatState {
-  messages: Message[];
+  messages: ChatMessage[];
   isStreaming: boolean;
   currentStreamingId: string | null;
 }
@@ -35,12 +27,19 @@ export const chatSlice = createSlice({
   reducers: {
     addMessage: (
       state,
-      action: PayloadAction<Omit<Message, "id" | "timestamp">>,
+      action: PayloadAction<
+        Pick<ChatMessage, "type" | "content"> &
+          Partial<Pick<ChatMessage, "id" | "timestamp" | "streaming" | "jsonData">>
+      >,
     ) => {
-      const message: Message = {
-        ...action.payload,
-        id: Date.now().toString(),
-        timestamp: Date.now(),
+      const now = Date.now();
+      const message: ChatMessage = {
+        id: action.payload.id ?? now.toString(),
+        timestamp: action.payload.timestamp ?? now,
+        type: action.payload.type,
+        content: action.payload.content,
+        streaming: action.payload.streaming,
+        jsonData: action.payload.jsonData,
       };
       state.messages.push(message);
     },
@@ -49,7 +48,7 @@ export const chatSlice = createSlice({
       action: PayloadAction<{
         id: string;
         content?: string;
-        jsonData?: any;
+        jsonData?: unknown;
         streaming?: boolean;
       }>,
     ) => {

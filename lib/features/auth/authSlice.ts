@@ -1,12 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-
-export interface User {
-  id: string
-  name: string
-  email: string
-  avatar?: string
-  plan: 'free' | 'pro' | 'enterprise'
-}
+import { User } from '@/lib/types'
+import { storage, PERSIST_KEYS } from '@/lib/utils/storage'
 
 interface AuthState {
   user: User | null
@@ -14,11 +8,13 @@ interface AuthState {
   isLoading: boolean
 }
 
-const initialState: AuthState = {
+const persistedAuth = storage.get<AuthState>(PERSIST_KEYS.auth, {
   user: null,
   isAuthenticated: false,
   isLoading: false,
-}
+});
+
+const initialState: AuthState = persistedAuth
 
 export const authSlice = createSlice({
   name: 'auth',
@@ -31,16 +27,19 @@ export const authSlice = createSlice({
       state.user = action.payload
       state.isAuthenticated = true
       state.isLoading = false
+      storage.set(PERSIST_KEYS.auth, state)
     },
     loginFailure: (state) => {
       state.user = null
       state.isAuthenticated = false
       state.isLoading = false
+      storage.set(PERSIST_KEYS.auth, state)
     },
     logout: (state) => {
       state.user = null
       state.isAuthenticated = false
       state.isLoading = false
+      storage.set(PERSIST_KEYS.auth, state)
     },
   },
 })

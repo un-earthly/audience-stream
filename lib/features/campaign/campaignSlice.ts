@@ -1,30 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-
-export interface AudienceSegment {
-  id: string;
-  name: string;
-  filters: {
-    geography?: string[];
-    pastPurchases?: string[];
-    websiteVisits?: string[];
-    demographics?: string[];
-  };
-  estimatedSize: number;
-}
-
-export interface Campaign {
-  id: string;
-  name: string;
-  audience: string;
-  channels: string[];
-  message: string;
-  timing: string;
-  meta: {
-    priority: "low" | "medium" | "high";
-    experiment_id: string;
-    estimated_reach: number;
-  };
-}
+import { Campaign, AudienceSegment } from "@/lib/types";
+import { storage, PERSIST_KEYS } from "@/lib/utils/storage";
 
 interface CampaignState {
   selectedChannels: string[];
@@ -33,6 +9,12 @@ interface CampaignState {
   campaigns: Campaign[];
   isGenerating: boolean;
 }
+
+const persisted = storage.get<Partial<CampaignState>>(PERSIST_KEYS.campaign, {
+  selectedChannels: [],
+  currentCampaign: null,
+  campaigns: [],
+});
 
 const initialState: CampaignState = {
   selectedChannels: [],
@@ -64,8 +46,8 @@ const initialState: CampaignState = {
       estimatedSize: 450,
     },
   ],
-  currentCampaign: null,
-  campaigns: [],
+  currentCampaign: persisted.currentCampaign ?? null,
+  campaigns: persisted.campaigns ?? [],
   isGenerating: false,
 };
 
@@ -82,15 +64,35 @@ export const campaignSlice = createSlice({
       } else {
         state.selectedChannels.push(channel);
       }
+      storage.set(PERSIST_KEYS.campaign, {
+        selectedChannels: state.selectedChannels,
+        currentCampaign: state.currentCampaign,
+        campaigns: state.campaigns,
+      });
     },
     setSelectedChannels: (state, action: PayloadAction<string[]>) => {
       state.selectedChannels = action.payload;
+      storage.set(PERSIST_KEYS.campaign, {
+        selectedChannels: state.selectedChannels,
+        currentCampaign: state.currentCampaign,
+        campaigns: state.campaigns,
+      });
     },
     setCurrentCampaign: (state, action: PayloadAction<Campaign | null>) => {
       state.currentCampaign = action.payload;
+      storage.set(PERSIST_KEYS.campaign, {
+        selectedChannels: state.selectedChannels,
+        currentCampaign: state.currentCampaign,
+        campaigns: state.campaigns,
+      });
     },
     addCampaign: (state, action: PayloadAction<Campaign>) => {
       state.campaigns.push(action.payload);
+      storage.set(PERSIST_KEYS.campaign, {
+        selectedChannels: state.selectedChannels,
+        currentCampaign: state.currentCampaign,
+        campaigns: state.campaigns,
+      });
     },
     setGenerating: (state, action: PayloadAction<boolean>) => {
       state.isGenerating = action.payload;

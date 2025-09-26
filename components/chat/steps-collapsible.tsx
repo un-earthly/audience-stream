@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight, Check, Loader2, AlertCircle, Clock } from "l
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { StepExecution } from "@/lib/features/chat/stepSlice";
+import { StepExecution } from "@/lib/types";
 
 interface StepsCollapsibleProps {
   execution: StepExecution;

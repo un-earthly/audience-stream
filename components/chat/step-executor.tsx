@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import {
   updateStepStatus,
@@ -10,6 +10,7 @@ import {
 import { stopStreaming } from "@/lib/features/chat/chatSlice";
 import { setCurrentCampaign, addCampaign } from "@/lib/features/campaign/campaignSlice";
 import { useCampaignStream } from "@/lib/hooks/use-campaign-stream";
+import { Campaign, CampaignGenerationData } from "@/lib/types";
 
 const campaignTemplates = [
   {
@@ -45,8 +46,27 @@ export function StepExecutor() {
   const execution = executions.find((e) => e.id === currentExecution);
   const { streamCampaign } = useCampaignStream();
 
+  const isCompleteCampaign = (data: CampaignGenerationData["campaign"]): data is Campaign => {
+    return (
+      typeof data.id === "string" &&
+      typeof data.name === "string" &&
+      typeof data.audience === "string" &&
+      Array.isArray(data.channels) &&
+      typeof data.message === "string" &&
+      typeof data.timing === "string" &&
+      !!data.meta &&
+      (data.meta.priority === "low" || data.meta.priority === "medium" || data.meta.priority === "high") &&
+      typeof data.meta.experiment_id === "string" &&
+      typeof data.meta.estimated_reach === "number"
+    );
+  };
+
+  const started = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (!execution || !execution.isRunning) return;
+    if (started.current.has(execution.id)) return;
+    started.current.add(execution.id);
 
     const executeStepsWithStreaming = async () => {
       // Find the original user message to get the query
@@ -57,10 +77,10 @@ export function StepExecutor() {
       
       const query = userMessage?.content || "create campaign";
 
-      // Execute steps with visual feedback
+      // Execute steps deterministically: 0 Thinking, 1 Analyze, 2 Generate
       for (let i = 0; i < execution.steps.length; i++) {
         const step = execution.steps[i];
-        
+
         // Start step
         dispatch(updateStepStatus({
           executionId: execution.id,
@@ -69,40 +89,47 @@ export function StepExecutor() {
           progress: 0,
         }));
 
-        // Simulate step progress
-        for (let progress = 0; progress <= 100; progress += 25) {
-          await new Promise(resolve => setTimeout(resolve, 150));
+        // Fast deterministic progress for first two phases
+        if (i < execution.steps.length - 1) {
+          for (let progress = 20; progress <= 100; progress += 20) {
+            await new Promise((r) => setTimeout(r, 120));
+            dispatch(updateStepStatus({
+              executionId: execution.id,
+              stepId: step.id,
+              status: "running",
+              progress,
+            }));
+          }
+
+          // Complete step
           dispatch(updateStepStatus({
             executionId: execution.id,
             stepId: step.id,
-            status: "running",
-            progress,
+            status: "completed",
+            progress: 100,
           }));
+
+          // Move to next step
+          dispatch(nextStep(execution.id));
+          await new Promise((r) => setTimeout(r, 150));
+          continue;
         }
 
-        // Complete step
+        // Final phase: trigger streaming and wait until it finishes
+        await streamCampaign(query, execution.messageId, (campaignData) => {
+          if (campaignData.campaign && isCompleteCampaign(campaignData.campaign)) {
+            dispatch(setCurrentCampaign(campaignData.campaign));
+            dispatch(addCampaign(campaignData.campaign));
+          }
+        });
+
+        // After stream completes, mark final step completed
         dispatch(updateStepStatus({
           executionId: execution.id,
           stepId: step.id,
           status: "completed",
           progress: 100,
         }));
-
-        // Move to next step
-        if (i < execution.steps.length - 1) {
-          dispatch(nextStep(execution.id));
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      }
-
-      // Start real streaming for the last step (campaign generation)
-      if (execution.steps.length > 0) {
-        await streamCampaign(query, execution.messageId, (campaignData) => {
-          if (campaignData.campaign) {
-            dispatch(setCurrentCampaign(campaignData.campaign));
-            dispatch(addCampaign(campaignData.campaign));
-          }
-        });
       }
 
       // Complete execution

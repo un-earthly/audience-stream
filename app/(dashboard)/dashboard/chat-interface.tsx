@@ -27,50 +27,19 @@ export function ChatInterface() {
         scrollToBottom();
     }, [messages, scrollToBottom]);
 
-    const generateStepsFromQuery = (query: string) => {
-        const lowerQuery = query.toLowerCase();
-
-        if (lowerQuery.includes("campaign") || lowerQuery.includes("marketing")) {
-            return [
-                {
-                    title: "Analyzing Campaign Requirements",
-                    description: "Understanding your campaign goals and target audience",
-                },
-                {
-                    title: "Identifying Optimal Channels",
-                    description: "Selecting the best marketing channels for your audience",
-                },
-                {
-                    title: "Building Audience Segments",
-                    description: "Creating targeted audience segments based on behavior",
-                },
-                {
-                    title: "Crafting Personalized Messages",
-                    description: "Generating compelling messages for each channel",
-                },
-                {
-                    title: "Optimizing Campaign Timing",
-                    description: "Determining the best time to launch your campaign",
-                },
-                {
-                    title: "Generating Campaign Configuration",
-                    description: "Creating the final JSON configuration for automation",
-                },
-            ];
-        }
-
+    const generateStepsFromQuery = (_query: string) => {
         return [
             {
-                title: "Processing Your Request",
-                description: "Understanding what you're looking for",
+                title: "Thinking",
+                description: "Considering your request and planning actions",
             },
             {
-                title: "Analyzing Available Data",
-                description: "Checking connected data sources and audience segments",
+                title: "Analyzing Context",
+                description: "Reviewing connected sources and relevant data",
             },
             {
-                title: "Generating Recommendations",
-                description: "Creating personalized suggestions based on your needs",
+                title: "Generate Recommendations",
+                description: "Producing the campaign answer, JSON, images and sources",
             },
         ];
     };
@@ -107,6 +76,7 @@ export function ChatInterface() {
             addMessage({
                 type: "assistant",
                 content: "I'll help you with that. Let me analyze your request and create a comprehensive solution.",
+                id: assistantMessageId,
                 streaming: false,
             })
         );

@@ -15,7 +15,7 @@ import {
 import { Progress } from "../ui/progress";
 import { useAppDispatch } from "../../lib/hooks";
 import { updateConnectionStatus, setConnecting } from "../../lib/features/connections/connectionsSlice";
-import { DataSource } from "../../lib/features/connections/connectionsSlice";
+import { DataSource } from "@/lib/types";
 
 interface ConnectionModalProps {
   open: boolean;

@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { ExtendedStreamEvent, CampaignGenerationData } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   const { query } = await request.json();
@@ -6,19 +7,28 @@ export async function POST(request: NextRequest) {
   // Create a readable stream for SSE
   const encoder = new TextEncoder();
   
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+
   const stream = new ReadableStream({
     start(controller) {
-      const sendEvent = (data: any) => {
+      const sendEvent = (data: ExtendedStreamEvent) => {
         const chunk = encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
         controller.enqueue(chunk);
       };
 
       // Send initial response
+      // Padding to avoid proxy buffering and indicate stream start
+      controller.enqueue(encoder.encode(': stream start\n\n'));
       sendEvent({ type: 'start', message: 'Starting campaign generation...' });
 
-      // Simulate progressive JSON generation
+      // Heartbeat every 15s to keep the connection alive
+      heartbeat = setInterval(() => {
+        controller.enqueue(encoder.encode(`: keep-alive ${Date.now()}\n\n`));
+      }, 15000);
+
+      // Simulate multi-phase process with tabs updates and progressive JSON generation
       const generateCampaign = async () => {
-        const campaignData = {
+        const campaignData: CampaignGenerationData = {
           campaign: {
             id: `campaign_${Date.now()}`,
             name: "",
@@ -27,12 +37,51 @@ export async function POST(request: NextRequest) {
             message: "",
             timing: "",
             meta: {
-              priority: "medium" as "low" | "medium" | "high",
+              priority: "medium",
               experiment_id: "",
               estimated_reach: 0
             }
           }
         };
+
+        // Phase 0: Thinking
+        sendEvent({ type: 'partial', message: 'Thinking...', });
+        sendEvent({ type: 'partial', message: 'Analyzing requirements...', });
+        // random ticks
+        for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) {
+          await new Promise(resolve => setTimeout(resolve, 200 + Math.floor(Math.random() * 300)));
+          sendEvent({ type: 'partial', message: 'thinking_tick' });
+        }
+
+        // Phase 1: Analyze - produce sources (placeholders)
+        const sources = [
+          { title: 'Facebook Ads Best Practices', url: 'https://example.com/fb-ads', source: 'facebook' },
+          { title: 'Email Engagement Benchmarks', url: 'https://example.com/email-benchmarks', source: 'email' },
+          { title: 'Ecommerce Cart Recovery', url: 'https://example.com/cart-recovery', source: 'blog' },
+        ];
+        sendEvent({ type: 'partial', message: 'analyze_start', tabs: { sources } as any });
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        // Phase 2: Generate - stream answer text and images
+        const images = [
+          'https://images.unsplash.com/photo-1542744173-8e7e53415bb0',
+          'https://images.unsplash.com/photo-1516542076529-1ea3854896e1',
+          'https://images.unsplash.com/photo-1519336555923-59661f41bb86',
+          'https://images.unsplash.com/photo-1515378960530-7c0da6231fb1',
+        ];
+        sendEvent({ type: 'partial', message: 'generate_start', tabs: { images } as any });
+        const answerChunks = [
+          "Here's a tailored multi-channel campaign plan.",
+          " It targets recent cart abandoners with timely nudges.",
+          " Channels include Email, SMS, and WhatsApp.",
+          " Messages emphasize urgency and value, with a weekend offer.",
+        ];
+        let answerSoFar = '';
+        for (const chunk of answerChunks) {
+          answerSoFar += chunk;
+          sendEvent({ type: 'partial', message: 'generate_progress', tabs: { answer: answerSoFar } as any });
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
 
         // Step 1: Generate name
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -103,17 +152,16 @@ export async function POST(request: NextRequest) {
           estimated_reach: 1200
         };
 
-        // Send complete campaign
-        sendEvent({ 
-          type: 'complete', 
-          data: campaignData
-        });
+        sendEvent({ type: 'partial', message: 'tabs_update', tabs: { answer: answerSoFar } as any });
+        sendEvent({ type: 'complete', data: campaignData });
 
+        if (heartbeat) clearInterval(heartbeat);
         controller.close();
       };
 
       generateCampaign().catch(error => {
         sendEvent({ type: 'error', error: error.message });
+        if (heartbeat) clearInterval(heartbeat);
         controller.close();
       });
     }
@@ -122,8 +170,10 @@ export async function POST(request: NextRequest) {
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
+      // Disable buffering on some proxies (nginx, Vercel)
+      'X-Accel-Buffering': 'no',
     },
   });
 }

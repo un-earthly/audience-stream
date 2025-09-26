@@ -2,32 +2,29 @@
 
 import { useCallback } from 'react';
 import { useAppDispatch } from '../hooks';
-import { updateMessage } from '../features/chat/chatSlice';
+import { updateMessage, startStreaming, stopStreaming } from '../features/chat/chatSlice';
+import { CampaignGenerationData, ExtendedStreamEvent, TabsData } from '@/lib/types';
+import { appendImages, appendSources, setAnswer } from '../features/chat/tabsSlice';
 
-interface StreamEvent {
-  type: 'start' | 'partial' | 'complete' | 'error';
-  field?: string;
-  value?: any;
-  data?: any;
-  message?: string;
-  error?: string;
-}
+// StreamEvent type moved to lib/types
 
 export function useCampaignStream() {
   const dispatch = useAppDispatch();
 
   const streamCampaign = useCallback(async (
-    query: string, 
+    query: string,
     messageId: string,
-    onProgress?: (data: any) => void
+    onProgress?: (data: CampaignGenerationData) => void
   ) => {
     try {
       const response = await fetch('/api/campaign/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
         },
         body: JSON.stringify({ query }),
+        cache: 'no-store',
       });
 
       if (!response.body) {
@@ -36,21 +33,40 @@ export function useCampaignStream() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let partialData: any = { campaign: {} };
+      let partialData: CampaignGenerationData = { campaign: {} };
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+        let lineBreakIndex: number;
+        while ((lineBreakIndex = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, lineBreakIndex);
+          buffer = buffer.slice(lineBreakIndex + 1);
 
-        for (const line of lines) {
+          // Processed in the loop above
           if (line.startsWith('data: ')) {
             try {
-              const event: StreamEvent = JSON.parse(line.slice(6));
-              
+              const event: ExtendedStreamEvent = JSON.parse(line.slice(6));
+
+              // Handle tabs updates
+              if (event.tabs) {
+                const tabs: TabsData = event.tabs;
+                if (tabs.answer !== undefined) {
+                  dispatch(setAnswer({ messageId, answer: tabs.answer }));
+                }
+                if (tabs.images && tabs.images.length) {
+                  dispatch(appendImages({ messageId, images: tabs.images }));
+                }
+                if (tabs.sources && tabs.sources.length) {
+                  dispatch(appendSources({ messageId, sources: tabs.sources }));
+                }
+              }
+
               switch (event.type) {
                 case 'start':
                   // Update message to show streaming started
@@ -59,13 +75,14 @@ export function useCampaignStream() {
                     content: 'Generating your campaign configuration...',
                     streaming: true,
                   }));
+                  dispatch(startStreaming(messageId));
                   break;
 
                 case 'partial':
                   // Update partial data
                   if (event.data) {
                     partialData = { ...partialData, ...event.data };
-                    
+
                     // Update message with partial JSON
                     dispatch(updateMessage({
                       id: messageId,
@@ -90,6 +107,7 @@ export function useCampaignStream() {
 
                     onProgress?.(event.data);
                   }
+                  dispatch(stopStreaming());
                   break;
 
                 case 'error':
@@ -98,6 +116,7 @@ export function useCampaignStream() {
                     content: `Error generating campaign: ${event.error}`,
                     streaming: false,
                   }));
+                  dispatch(stopStreaming());
                   break;
               }
             } catch (parseError) {

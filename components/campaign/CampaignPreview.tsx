@@ -68,14 +68,14 @@ export function CampaignPreview() {
           </h4>
           <div
             className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              currentCampaign.meta.priority === "high"
+              currentCampaign.meta?.priority === "high"
                 ? "bg-red-100 text-red-800"
-                : currentCampaign.meta.priority === "medium"
+                : currentCampaign.meta?.priority === "medium"
                   ? "bg-yellow-100 text-yellow-800"
                   : "bg-green-100 text-green-800"
             }`}
           >
-            {currentCampaign.meta.priority.toUpperCase()} PRIORITY
+            {currentCampaign.meta?.priority?.toUpperCase() || 'MEDIUM'} PRIORITY
           </div>
         </div>
 
@@ -99,7 +99,7 @@ export function CampaignPreview() {
                 Estimated Reach
               </div>
               <div className="text-xs text-gray-600">
-                {currentCampaign.meta.estimated_reach.toLocaleString()} users
+                {currentCampaign.meta?.estimated_reach?.toLocaleString() || 'N/A'} users
               </div>
             </div>
           </div>
@@ -135,7 +135,7 @@ export function CampaignPreview() {
         </div>
 
         <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
-          Experiment ID: {currentCampaign.meta.experiment_id} • Campaign ID:{" "}
+          Experiment ID: {currentCampaign.meta?.experiment_id || 'N/A'} • Campaign ID:{" "}
           {currentCampaign.id}
         </div>
       </div>

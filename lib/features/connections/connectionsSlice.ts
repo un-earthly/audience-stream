@@ -1,18 +1,16 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-
-export interface DataSource {
-  id: string;
-  name: string;
-  type: "shopify" | "analytics" | "facebook" | "email" | "sms";
-  status: "connected" | "pending" | "disconnected" | "error";
-  lastSync?: number;
-  icon: string;
-}
+import { DataSource } from "@/lib/types";
+import { storage, PERSIST_KEYS } from "@/lib/utils/storage";
 
 interface ConnectionsState {
   dataSources: DataSource[];
   isConnecting: boolean;
 }
+
+const persisted = storage.get<Partial<ConnectionsState>>(PERSIST_KEYS.connections, {
+  dataSources: [],
+  isConnecting: false,
+});
 
 const initialState: ConnectionsState = {
   dataSources: [
@@ -52,7 +50,7 @@ const initialState: ConnectionsState = {
       icon: "💬",
     },
   ],
-  isConnecting: false,
+  isConnecting: persisted.isConnecting ?? false,
 };
 
 export const connectionsSlice = createSlice({
@@ -76,9 +74,17 @@ export const connectionsSlice = createSlice({
           source.lastSync = action.payload.lastSync;
         }
       }
+      storage.set(PERSIST_KEYS.connections, {
+        dataSources: state.dataSources,
+        isConnecting: state.isConnecting,
+      });
     },
     setConnecting: (state, action: PayloadAction<boolean>) => {
       state.isConnecting = action.payload;
+      storage.set(PERSIST_KEYS.connections, {
+        dataSources: state.dataSources,
+        isConnecting: state.isConnecting,
+      });
     },
   },
 });
