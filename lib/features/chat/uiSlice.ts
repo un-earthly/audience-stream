@@ -23,6 +23,8 @@ export interface ChatUiState {
   showHints: boolean;
   attachments: AttachmentItem[];
   preview: PreviewState;
+  editingConversationId: string | null;
+  newConversationTitle: string;
 }
 
 const persisted = storage.get<Partial<ChatUiState>>(PERSIST_KEYS.chat_ui, {} as any);
@@ -40,6 +42,8 @@ const initialState: ChatUiState = {
     imageUrl: undefined,
     index: null,
   },
+  editingConversationId: null,
+  newConversationTitle: '',
 };
 
 const persist = (state: ChatUiState) => {
@@ -88,6 +92,17 @@ export const chatUiSlice = createSlice({
         state.attachments[index].file = newFile;
       }
     },
+    startEditingConversation(state, action: PayloadAction<{ id: string; currentTitle: string }>) {
+      state.editingConversationId = action.payload.id;
+      state.newConversationTitle = action.payload.currentTitle;
+    },
+    updateConversationTitle(state, action: PayloadAction<string>) {
+      state.newConversationTitle = action.payload;
+    },
+    stopEditingConversation(state) {
+      state.editingConversationId = null;
+      state.newConversationTitle = '';
+    },
   }
 });
 
@@ -101,6 +116,9 @@ export const {
   openPreview,
   closePreview,
   renameAttachment,
+  startEditingConversation,
+  updateConversationTitle,
+  stopEditingConversation,
 } = chatUiSlice.actions;
 
 export default chatUiSlice.reducer;

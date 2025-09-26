@@ -9,6 +9,7 @@ import {
 } from "@/lib/features/chat/stepSlice";
 import { stopStreaming } from "@/lib/features/chat/chatSlice";
 import { setCurrentCampaign, addCampaign } from "@/lib/features/campaign/campaignSlice";
+import { updateMessageInConversation, renameConversation } from "@/lib/features/chat/historySlice";
 import { useCampaignStream } from "@/lib/hooks/use-campaign-stream";
 import { Campaign, CampaignGenerationData } from "@/lib/types";
 
@@ -43,6 +44,7 @@ export function StepExecutor() {
   const dispatch = useAppDispatch();
   const { executions, currentExecution } = useAppSelector((state) => state.steps);
   const { messages } = useAppSelector((state) => state.chat);
+  const { activeConversationId, conversations } = useAppSelector((s) => s.history);
   const execution = executions.find((e) => e.id === currentExecution);
   const { streamCampaign } = useCampaignStream();
 
@@ -120,6 +122,25 @@ export function StepExecutor() {
           if (campaignData.campaign && isCompleteCampaign(campaignData.campaign)) {
             dispatch(setCurrentCampaign(campaignData.campaign));
             dispatch(addCampaign(campaignData.campaign));
+          }
+          // Persist partial/final JSON to history so hydration renders JSON later
+          if (activeConversationId) {
+            dispatch(updateMessageInConversation({
+              conversationId: activeConversationId,
+              messageId: execution.messageId,
+              patch: { jsonData: campaignData },
+            }));
+            
+            // Auto-title with campaign name if available and conversation still has default title
+            if (campaignData.campaign?.name) {
+              const conv = conversations.find(c => c.id === activeConversationId);
+              if (conv && (conv.title === "New chat" || conv.title.length < 20)) {
+                dispatch(renameConversation({ 
+                  id: activeConversationId, 
+                  title: campaignData.campaign.name 
+                }));
+              }
+            }
           }
         });
 

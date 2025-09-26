@@ -1,18 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { StepsCollapsible } from "./steps-collapsible";
 import { Brain, Clock, Copy, Eye, EyeOff, ThumbsUp, ThumbsDown, Check, ChevronDown } from "lucide-react";
-import { setFeedback } from "@/lib/features/chat/tabsSlice";
+import { setFeedback, setAnswer, appendThoughts, appendSources, appendImages, setTabs } from "@/lib/features/chat/tabsSlice";
 import { toast } from "sonner";
+import { getRandomCampaignChunks, getRandomLoremText } from "@/lib/constants/chat";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { Button } from "@/components/ui/button";
+import { startExecution, updateStepStatus, nextStep, completeExecution } from "@/lib/features/chat/stepSlice";
+import { startStreaming, stopStreaming } from "@/lib/features/chat/chatSlice";
 interface MessageTabsProps {
   messageId: string;
   jsonData?: unknown;
@@ -26,8 +30,208 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
   const [value, setValue] = useState<string>("answer");
   const [showThoughts, setShowThoughts] = useState<boolean>(true);
   const { isStreaming, currentStreamingId } = useAppSelector((s) => s.chat);
+  // Keep latest state snapshots in refs for timers
+  const executionsRef = useRef(executions);
+  const chatRef = useRef({ isStreaming, currentStreamingId });
+  useEffect(() => { executionsRef.current = executions; }, [executions]);
+  useEffect(() => { chatRef.current = { isStreaming, currentStreamingId }; }, [isStreaming, currentStreamingId]);
   const thinkingActive = isStreaming && currentStreamingId === messageId;
   const [copied, setCopied] = useState(false);
+
+  // Refs to manage mock streaming lifecycle
+  const answerBufferRef = useRef<string>(tabs?.answer ?? "");
+  const answerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const thoughtsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearAllTimers = () => {
+    if (answerIntervalRef.current) {
+      clearInterval(answerIntervalRef.current);
+      answerIntervalRef.current = null;
+    }
+    if (thoughtsIntervalRef.current) {
+      clearInterval(thoughtsIntervalRef.current);
+      thoughtsIntervalRef.current = null;
+    }
+    stepTimersRef.current.forEach((t) => clearTimeout(t));
+    stepTimersRef.current = [];
+  };
+
+  // Kick off a mock streaming process for this message
+  const startMockStream = () => {
+    // Prevent double-starts
+    if (thinkingActive) return;
+
+    // Reset tabs for this message and start streaming
+    dispatch(setTabs({ messageId, data: { answer: "", images: [], sources: [], thoughts: [] } }));
+    answerBufferRef.current = "";
+    dispatch(startStreaming(messageId));
+
+    // Start steps execution
+    const steps = [
+      { title: "Analyze prompt", description: "Understanding user intent" },
+      { title: "Fetch data", description: "Gathering relevant signals" },
+      { title: "Generate response", description: "Composing answer and assets" },
+    ];
+    dispatch(startExecution({ messageId, steps }));
+
+    // We need the latest execution id from store after startExecution. We'll poll it briefly.
+    const getExecutionId = () => {
+      const ex = executionsRef.current.find((e) => e.messageId === messageId);
+      return ex?.id;
+    };
+
+    // Steps progression simulation
+    const scheduleSteps = () => {
+      const execId = getExecutionId();
+      if (!execId) return;
+      // Step 1 running -> complete
+      stepTimersRef.current.push(setTimeout(() => {
+        const execIdNow = getExecutionId();
+        if (!execIdNow) return;
+        // Get first step id from store
+        const exNow = executionsRef.current.find((e) => e.id === execIdNow);
+        const step1 = exNow?.steps?.[0];
+        if (step1) {
+          dispatch(updateStepStatus({ executionId: execIdNow, stepId: step1.id, status: "running", progress: 25 }));
+        }
+      }, 300));
+
+      stepTimersRef.current.push(setTimeout(() => {
+        const execIdNow = getExecutionId();
+        if (!execIdNow) return;
+        const exNow = executionsRef.current.find((e) => e.id === execIdNow);
+        const step1 = exNow?.steps?.[0];
+        if (step1) {
+          dispatch(updateStepStatus({ executionId: execIdNow, stepId: step1.id, status: "completed", progress: 100 }));
+          dispatch(nextStep(execIdNow));
+        }
+      }, 1200));
+
+      // Step 2
+      stepTimersRef.current.push(setTimeout(() => {
+        const execIdNow = getExecutionId();
+        if (!execIdNow) return;
+        const exNow = executionsRef.current.find((e) => e.id === execIdNow);
+        const step2 = exNow?.steps?.[1];
+        if (step2) {
+          dispatch(updateStepStatus({ executionId: execIdNow, stepId: step2.id, status: "running", progress: 20 }));
+        }
+      }, 1500));
+
+      stepTimersRef.current.push(setTimeout(() => {
+        const execIdNow = getExecutionId();
+        if (!execIdNow) return;
+        const exNow = executionsRef.current.find((e) => e.id === execIdNow);
+        const step2 = exNow?.steps?.[1];
+        if (step2) {
+          dispatch(updateStepStatus({ executionId: execIdNow, stepId: step2.id, status: "completed", progress: 100 }));
+          dispatch(nextStep(execIdNow));
+        }
+      }, 2600));
+
+      // Step 3
+      stepTimersRef.current.push(setTimeout(() => {
+        const execIdNow = getExecutionId();
+        if (!execIdNow) return;
+        const exNow = executionsRef.current.find((e) => e.id === execIdNow);
+        const step3 = exNow?.steps?.[2];
+        if (step3) {
+          dispatch(updateStepStatus({ executionId: execIdNow, stepId: step3.id, status: "running", progress: 30 }));
+        }
+      }, 2900));
+
+      stepTimersRef.current.push(setTimeout(() => {
+        const execIdNow = getExecutionId();
+        if (!execIdNow) return;
+        const exNow = executionsRef.current.find((e) => e.id === execIdNow);
+        const step3 = exNow?.steps?.[2];
+        if (step3) {
+          dispatch(updateStepStatus({ executionId: execIdNow, stepId: step3.id, status: "completed", progress: 100 }));
+          dispatch(completeExecution(execIdNow));
+        }
+      }, 4200));
+    };
+
+    // Answer streaming simulation with dynamic content
+    const chunks = getRandomCampaignChunks();
+    let idx = 0;
+    answerIntervalRef.current = setInterval(() => {
+      const chatState = chatRef.current;
+      if (!chatState.isStreaming || chatState.currentStreamingId !== messageId) {
+        // Stop if streaming was cancelled elsewhere
+        if (answerIntervalRef.current) clearInterval(answerIntervalRef.current);
+        return;
+      }
+      if (idx >= chunks.length) {
+        if (answerIntervalRef.current) {
+          clearInterval(answerIntervalRef.current);
+          answerIntervalRef.current = null;
+        }
+        // Append sources and images at the end
+        dispatch(appendSources({ messageId, sources: [
+          { title: "Marketing signals report", url: "https://example.com/report", source: "Internal" },
+          { title: "Industry trends Q3", url: "https://example.com/trends", source: "Analyst" },
+        ]}));
+        dispatch(appendImages({ messageId, images: [
+          "https://images.unsplash.com/photo-1551836022-d5d88e9218df?ixlib=rb-4.0.3",
+          "https://images.unsplash.com/photo-1529336953121-ad71687a4a7b?ixlib=rb-4.0.3",
+        ] }));
+        // Stop overall streaming when everything is done (a bit after steps complete)
+        stepTimersRef.current.push(setTimeout(() => {
+          dispatch(stopStreaming());
+        }, 800));
+        return;
+      }
+      answerBufferRef.current += chunks[idx++];
+      dispatch(setAnswer({ messageId, answer: answerBufferRef.current }));
+    }, 700);
+
+    // Thoughts streaming simulation with dynamic content
+    const thoughtPhrases = [
+      "Analyzing customer behavior patterns",
+      "Processing engagement metrics",
+      "Optimizing channel selection",
+      "Generating personalized content",
+      "Calculating conversion probabilities",
+      "Refining audience segments",
+      "Testing message variations",
+      "Evaluating campaign timing",
+      "Assessing budget allocation",
+      "Monitoring performance indicators"
+    ];
+    let t = 0;
+    thoughtsIntervalRef.current = setInterval(() => {
+      // Randomly select from available phrases
+      const randomIndex = Math.floor(Math.random() * thoughtPhrases.length);
+      const phrase = thoughtPhrases[randomIndex];
+      
+      // Occasionally add lorem ipsum for longer thoughts
+      const finalPhrase = Math.random() > 0.7 
+        ? `${phrase} - ${getRandomLoremText(1).slice(0, 50)}...`
+        : phrase;
+      
+      dispatch(appendThoughts({ messageId, thoughts: [{ text: finalPhrase, ts: Date.now() }] }));
+      t += 1;
+    }, Math.random() * 400 + 400); // Vary the interval between 400-800ms
+
+    // Schedule steps after the store has the execution
+    setTimeout(scheduleSteps, 50);
+  };
+
+  // Cleanup on unmount or when message changes
+  useEffect(() => {
+    return () => {
+      clearAllTimers();
+    };
+  }, []);
+
+  // Stop local timers if streaming stops externally
+  useEffect(() => {
+    if (!thinkingActive) {
+      clearAllTimers();
+    }
+  }, [thinkingActive]);
 
   const handleCopy = async () => {
     try {
@@ -92,6 +296,13 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
 
             </div>
           </div>
+          {/* Dev helper to trigger mock streaming when there's no answer */}
+          {!thinkingActive && !(tabs?.answer && tabs.answer.length > 0) && (
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">No answer yet. Start a mock stream to preview the UI.</div>
+              <Button size="sm" variant="secondary" onClick={startMockStream}>Start mock stream</Button>
+            </div>
+          )}
           {/* Thinking / Thoughts block with inline toggle */}
           {tabs?.thoughts && tabs.thoughts.length > 0 && (
             <Collapsible className="text-xs border rounded-md p-2 bg-muted/30">

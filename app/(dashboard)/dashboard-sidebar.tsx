@@ -7,7 +7,11 @@ import {
   Target, 
   ChevronRight,
   Plus,
-  MessageSquare
+  MessageSquare,
+  Edit3,
+  Trash2,
+  Check,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,11 +19,16 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ConnectionModal } from "@/components/connections/connection-modal";
 import { ChannelGrid } from "@/components/channels/channel-grid";
-import { useAppSelector } from "@/lib/hooks";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { DataSource } from "@/lib/types";
 import Link from "next/link";
+import { createConversation, setActiveConversation, deleteConversation, renameConversation } from "@/lib/features/chat/historySlice";
+import { clearChat } from "@/lib/features/chat/chatSlice";
+import { startEditingConversation, updateConversationTitle, stopEditingConversation } from "@/lib/features/chat/uiSlice";
+import { Input } from "@/components/ui/input";
 
 export function DashboardSidebar() {
+  const dispatch = useAppDispatch();
   const [activeSection, setActiveSection] = useState<string | null>("connections");
   const [selectedDataSource, setSelectedDataSource] = useState<DataSource | null>(null);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
@@ -27,6 +36,8 @@ export function DashboardSidebar() {
   const { dataSources } = useAppSelector((state) => state.connections);
   const { selectedChannels, audienceSegments } = useAppSelector((state) => state.campaign);
   const { currentCampaign } = useAppSelector((state) => state.campaign);
+  const { conversations, activeConversationId } = useAppSelector((s) => s.history);
+  const { editingConversationId, newConversationTitle } = useAppSelector((s) => s.chatUi);
 
   const connectedSources = dataSources.filter(ds => ds.status === "connected");
 
@@ -41,6 +52,12 @@ export function DashboardSidebar() {
       title: "Data Sources",
       icon: Plug,
       badge: `${connectedSources.length}/${dataSources.length}`,
+    },
+    {
+      id: "chats",
+      title: "Chats",
+      icon: MessageSquare,
+      badge: conversations.length.toString(),
     },
     {
       id: "audience",
@@ -124,6 +141,127 @@ export function DashboardSidebar() {
 
           <Separator />
           {/* Section Content */}
+          {activeSection === "chats" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Chat History</h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    // Start a brand new chat - don't create conversation until first message
+                    dispatch(clearChat());
+                    dispatch(setActiveConversation(''));
+                  }}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  New chat
+                </Button>
+              </div>
+
+              {conversations.length === 0 && (
+                <div className="text-xs text-muted-foreground">No chats yet. Start one from the chat panel.</div>
+              )}
+
+              <div className="space-y-2">
+                {conversations.map((c) => (
+                  <Card
+                    key={c.id}
+                    className={`group transition-all hover:shadow-sm ${
+                      activeConversationId === c.id ? "border-primary/40 bg-primary/5" : ""
+                    }`}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div 
+                          className="flex-1 cursor-pointer" 
+                          onClick={() => dispatch(setActiveConversation(c.id))}
+                        >
+                          {editingConversationId === c.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={newConversationTitle}
+                                onChange={(e) => dispatch(updateConversationTitle(e.target.value))}
+                                className="h-6 text-sm"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    dispatch(renameConversation({ id: c.id, title: newConversationTitle }));
+                                    dispatch(stopEditingConversation());
+                                  } else if (e.key === 'Escape') {
+                                    dispatch(stopEditingConversation());
+                                  }
+                                }}
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  dispatch(renameConversation({ id: c.id, title: newConversationTitle }));
+                                  dispatch(stopEditingConversation());
+                                }}
+                              >
+                                <Check className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  dispatch(stopEditingConversation());
+                                }}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-sm font-medium truncate">{c.title || "Untitled chat"}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(c.createdAt).toLocaleString()} • {c.messages.length} messages
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {editingConversationId !== c.id && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dispatch(startEditingConversation({ id: c.id, currentTitle: c.title }));
+                              }}
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm('Delete this conversation?')) {
+                                  dispatch(deleteConversation(c.id));
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           {activeSection === "connections" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">

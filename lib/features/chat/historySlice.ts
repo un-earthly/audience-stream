@@ -58,6 +58,26 @@ export const historySlice = createSlice({
         persist(state);
       }
     },
+    updateMessageInConversation(state, action: PayloadAction<{ conversationId: string; messageId: string; patch: Partial<ChatMessage> }>) {
+      const c = state.conversations.find(c => c.id === action.payload.conversationId);
+      if (c) {
+        const m = c.messages.find(m => m.id === action.payload.messageId);
+        if (m) {
+          Object.assign(m, action.payload.patch);
+          persist(state);
+        }
+      }
+    },
+    deleteConversation(state, action: PayloadAction<string>) {
+      const index = state.conversations.findIndex(c => c.id === action.payload);
+      if (index !== -1) {
+        state.conversations.splice(index, 1);
+        if (state.activeConversationId === action.payload) {
+          state.activeConversationId = state.conversations.length > 0 ? state.conversations[0].id : null;
+        }
+        persist(state);
+      }
+    },
     clearHistory(state) {
       state.conversations = [];
       state.activeConversationId = null;
@@ -71,6 +91,8 @@ export const {
   setActiveConversation,
   renameConversation,
   addMessageToConversation,
+  updateMessageInConversation,
+  deleteConversation,
   clearHistory,
 } = historySlice.actions;
 
