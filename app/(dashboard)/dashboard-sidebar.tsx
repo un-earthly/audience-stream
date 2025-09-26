@@ -5,7 +5,6 @@ import {
   Plug, 
   Users, 
   Target, 
-  BarChart3, 
   ChevronRight,
   Plus
 } from "lucide-react";
@@ -15,9 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ConnectionModal } from "@/components/connections/connection-modal";
 import { ChannelGrid } from "@/components/channels/channel-grid";
-import { LiveAnalytics } from "@/components/analytics/live-analytics";
 import { useAppSelector } from "@/lib/hooks";
 import { DataSource } from "@/lib/types";
+import Link from "next/link";
 
 export function DashboardSidebar() {
   const [activeSection, setActiveSection] = useState<string | null>("connections");
@@ -54,12 +53,7 @@ export function DashboardSidebar() {
       icon: Target,
       badge: selectedChannels.length.toString(),
     },
-    {
-      id: "analytics",
-      title: "Analytics",
-      icon: BarChart3,
-      badge: "Live",
-    },
+    // Analytics section removed per request
   ];
 
   return (
@@ -74,6 +68,13 @@ export function DashboardSidebar() {
             </p>
           </div>
 
+          {/* Metrics quick link */}
+          <div>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/dashboard/metrics">View Metrics</Link>
+            </Button>
+          </div>
+
           {/* Navigation */}
           <div className="space-y-2">
             {sidebarSections.map((section) => {
@@ -81,10 +82,11 @@ export function DashboardSidebar() {
               const isActive = activeSection === section.id;
               
               return (
-                <button
+                <Button
                   key={section.id}
+                  variant="ghost"
                   onClick={() => setActiveSection(isActive ? null : section.id)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${
+                  className={`w-full justify-between p-3 h-auto text-left transition-all ${
                     isActive 
                       ? "bg-primary/10 text-primary border border-primary/20" 
                       : "hover:bg-accent text-muted-foreground hover:text-foreground"
@@ -104,13 +106,12 @@ export function DashboardSidebar() {
                       }`} 
                     />
                   </div>
-                </button>
+                </Button>
               );
             })}
           </div>
 
           <Separator />
-
           {/* Section Content */}
           {activeSection === "connections" && (
             <div className="space-y-3">
@@ -182,12 +183,6 @@ export function DashboardSidebar() {
               </div>
               
               <ChannelGrid />
-            </div>
-          )}
-
-          {activeSection === "analytics" && (
-            <div className="space-y-3">
-              <LiveAnalytics />
             </div>
           )}
 

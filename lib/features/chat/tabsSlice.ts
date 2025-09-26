@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { SourceLink, TabsData } from "@/lib/types";
+import { SourceLink, TabsData, ThoughtItem } from "@/lib/types";
 
 export interface TabsStateRecord {
   [messageId: string]: TabsData | undefined;
@@ -42,7 +42,7 @@ export const tabsSlice = createSlice({
     },
     appendThoughts: (
       state,
-      action: PayloadAction<{ messageId: string; thoughts: string[] }>
+      action: PayloadAction<{ messageId: string; thoughts: ThoughtItem[] }>
     ) => {
       const existing = state[action.payload.messageId] ?? {};
       const current = existing.thoughts ?? [];

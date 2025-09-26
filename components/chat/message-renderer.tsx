@@ -1,10 +1,11 @@
 "use client";
-
+import React from "react";
 import { User, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { useAppSelector } from "@/lib/hooks";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { ChatMessage } from "@/lib/types";
-import { JsonBlock } from "./JsonBlock";
 import { StepsCollapsible } from "./steps-collapsible";
 import { MessageTabs } from "./message-tabs";
 
@@ -14,10 +15,13 @@ interface MessageRendererProps {
 }
 
 export function MessageRenderer({ message, index }: MessageRendererProps) {
+    const dispatch = useAppDispatch();
     const { executions } = useAppSelector((state) => state.steps);
     const execution = executions.find((e) => e.messageId === message.id);
 
     const isUser = message.type === "user";
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editValue, setEditValue] = React.useState(message.content);
     const isSystem = message.type === "system";
 
     return (
@@ -44,7 +48,64 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                             : "bg-card"
                         }`}
                 >
-                    {message.content && (
+                    {isUser && (
+                        <div className="flex items-start justify-between gap-2">
+                            {!isEditing ? (
+                                <div className="prose prose-sm max-w-none dark:prose-invert">
+                                    {message.content}
+                                </div>
+                            ) : (
+                                <Textarea
+                                    className="w-full text-sm"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    rows={3}
+                                />
+                            )}
+                            <div className="flex-shrink-0">
+                                {!isEditing ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs"
+                                        onClick={() => setIsEditing(true)}
+                                    >
+                                        Edit
+                                    </Button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs"
+                                            onClick={() => {
+                                                setIsEditing(false);
+                                                setEditValue(message.content);
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="text-xs"
+                                            onClick={() => {
+                                                if (editValue.trim().length === 0) return;
+                                                dispatch({
+                                                    type: 'chat/updateMessage',
+                                                    payload: { id: message.id, content: editValue }
+                                                });
+                                                setIsEditing(false);
+                                            }}
+                                        >
+                                            Save
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {!isUser && message.content && (
                         <div className="prose prose-sm max-w-none dark:prose-invert">
                             {message.content}
                             {message.streaming && (
@@ -54,22 +115,15 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                     )}
                 </Card>
 
-                {/* Steps visualization - Subtle and expandable */}
-                {execution && execution.steps.length > 0 && (
+                {/* Steps visualization - only render standalone if tabs are not shown */}
+                {execution && execution.steps.length > 0 && isUser && (
                     <StepsCollapsible execution={execution} />
-                )}
-
-                {/* JSON result */}
-                {message.jsonData != null && (
-                    <div className="mt-4">
-                        <JsonBlock data={message.jsonData} />
-                    </div>
                 )}
 
                 {/* Perplexity-like tabs */}
                 {!isUser && (
                     <div className="mt-4">
-                        <MessageTabs messageId={message.id} />
+                        <MessageTabs messageId={message.id} jsonData={message.jsonData} />
                     </div>
                 )}
 

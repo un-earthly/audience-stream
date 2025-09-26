@@ -2,6 +2,7 @@
 
 import { Calendar, Users, MessageSquare, Target, Download } from "lucide-react";
 import { useAppSelector } from "../../lib/hooks";
+import { Button } from "@/components/ui/button";
 
 export function CampaignPreview() {
   const { currentCampaign } = useAppSelector((state) => state.campaign);
@@ -51,14 +52,10 @@ export function CampaignPreview() {
         <h3 className="text-lg font-semibold text-gray-900">
           Campaign Preview
         </h3>
-        <button
-          type="button"
-          onClick={handleExport}
-          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Download className="w-4 h-4" />
+        <Button type="button" onClick={handleExport}>
+          <Download className="w-4 h-4 mr-2" />
           Export JSON
-        </button>
+        </Button>
       </div>
 
       <div className="space-y-4">

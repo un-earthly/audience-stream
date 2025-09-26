@@ -26,6 +26,7 @@ export interface Campaign {
   id: string;
   name: string;
   audience: string;
+  target?: string;
   channels: string[];
   message: string;
   timing: string;
@@ -106,11 +107,16 @@ export interface SourceLink {
   source?: string;
 }
 
+export interface ThoughtItem {
+  text: string;
+  ts: number;
+}
+
 export interface TabsData {
   answer?: string;
   images?: string[];
   sources?: SourceLink[];
-  thoughts?: string[];
+  thoughts?: ThoughtItem[];
 }
 
 export type PhaseEventType =

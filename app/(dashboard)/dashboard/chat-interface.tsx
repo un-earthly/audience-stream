@@ -13,6 +13,7 @@ import { MessageRenderer } from "@/components/chat/message-renderer";
 
 export function ChatInterface() {
     const [input, setInput] = useState("");
+    const [deepthink, setDeepthink] = useState(false);
     const [isThinking, setIsThinking] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -48,7 +49,10 @@ export function ChatInterface() {
         e.preventDefault();
         if (!input.trim() || isStreaming) return;
 
-        const userMessage = input.trim();
+        let userMessage = input.trim();
+        if (deepthink && !userMessage.toLowerCase().includes('[deepthink]')) {
+            userMessage = `${userMessage} [deepthink]`;
+        }
         setInput("");
 
         // Reset textarea height
@@ -171,7 +175,21 @@ export function ChatInterface() {
                         </Button>
                     </div>
                     <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
-                        <div>Press Enter to send, Shift + Enter for new line</div>
+                        <div className="flex items-center gap-2">
+                            <div>Press Enter to send, Shift + Enter for new line</div>
+                            <div className="flex items-center gap-1 ml-3">
+                                <Button
+                                  type="button"
+                                  variant={deepthink ? 'default' : 'outline'}
+                                  size="sm"
+                                  onClick={() => setDeepthink((v) => !v)}
+                                  className="px-2 py-1"
+                                  title="Deepthink research: produce a longer, more thorough analysis"
+                                >
+                                  {deepthink ? 'Deepthink: ON' : 'Deepthink: OFF'}
+                                </Button>
+                            </div>
+                        </div>
                         <div>Powered by AI</div>
                     </div>
                 </form>

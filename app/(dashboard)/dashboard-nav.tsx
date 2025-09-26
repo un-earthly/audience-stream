@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Settings, User, LogOut, Moon, Sun } from "lucide-react";
+import { Sparkles, Settings, User, LogOut, Moon, Sun, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,16 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { logout } from "@/lib/features/auth/authSlice";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { DashboardSidebar } from "./dashboard-sidebar";
+import Link from "next/link";
 
 export function DashboardNav() {
   const { theme, setTheme } = useTheme();
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { user } = useAppSelector((state) => state.auth);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -34,6 +38,12 @@ export function DashboardNav() {
       <div className="flex h-16 items-center justify-between px-6">
         {/* Logo */}
         <div className="flex items-center gap-3">
+          {/* Mobile menu */}
+          <div className="lg:hidden mr-1">
+            <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
           <div className="relative">
             <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
@@ -60,6 +70,10 @@ export function DashboardNav() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Metrics quick link (desktop) */}
+          <Button asChild variant="outline" className="hidden md:inline-flex">
+            <Link href="/dashboard/metrics">Metrics</Link>
+          </Button>
           {/* Theme toggle */}
           <Button
             variant="ghost"
@@ -112,6 +126,12 @@ export function DashboardNav() {
           )}
         </div>
       </div>
+      {/* Mobile sidebar dialog */}
+      <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
+        <DialogContent className="sm:max-w-none p-0 gap-0 w-[22rem] max-w-[90vw]">
+          <DashboardSidebar />
+        </DialogContent>
+      </Dialog>
     </nav>
   );
 }
