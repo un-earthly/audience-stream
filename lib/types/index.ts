@@ -110,6 +110,7 @@ export interface TabsData {
   answer?: string;
   images?: string[];
   sources?: SourceLink[];
+  thoughts?: string[];
 }
 
 export type PhaseEventType =

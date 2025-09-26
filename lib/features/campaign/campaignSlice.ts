@@ -17,7 +17,7 @@ const persisted = storage.get<Partial<CampaignState>>(PERSIST_KEYS.campaign, {
 });
 
 const initialState: CampaignState = {
-  selectedChannels: [],
+  selectedChannels: persisted.selectedChannels ?? [],
   audienceSegments: [
     {
       id: "cart-abandoners",

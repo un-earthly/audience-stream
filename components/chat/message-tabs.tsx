@@ -26,7 +26,18 @@ export function MessageTabs({ messageId }: MessageTabsProps) {
       </TabsList>
 
       <TabsContent value="answer">
-        <Card className="p-4">
+        <Card className="p-4 space-y-3">
+          {/* Thinking block */}
+          {tabs?.thoughts && tabs.thoughts.length > 0 && (
+            <div className="text-xs text-muted-foreground border rounded-md p-2 bg-muted/30">
+              <div className="font-medium mb-1">Thinking</div>
+              <ul className="list-disc pl-5 space-y-0.5">
+                {tabs.thoughts.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
             {tabs?.answer ?? "Generating answer..."}
           </div>

@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useAppDispatch } from '../hooks';
 import { updateMessage, startStreaming, stopStreaming } from '../features/chat/chatSlice';
 import { CampaignGenerationData, ExtendedStreamEvent, TabsData } from '@/lib/types';
-import { appendImages, appendSources, setAnswer } from '../features/chat/tabsSlice';
+import { appendImages, appendSources, setAnswer, appendThoughts } from '../features/chat/tabsSlice';
 
 // StreamEvent type moved to lib/types
 
@@ -64,6 +64,9 @@ export function useCampaignStream() {
                 }
                 if (tabs.sources && tabs.sources.length) {
                   dispatch(appendSources({ messageId, sources: tabs.sources }));
+                }
+                if (tabs.thoughts && tabs.thoughts.length) {
+                  dispatch(appendThoughts({ messageId, thoughts: tabs.thoughts }));
                 }
               }
 

@@ -132,6 +132,16 @@ export function StepExecutor() {
         }));
       }
 
+      // Safety: ensure all steps are completed before finishing
+      for (const s of execution.steps) {
+        dispatch(updateStepStatus({
+          executionId: execution.id,
+          stepId: s.id,
+          status: "completed",
+          progress: 100,
+        }));
+      }
+
       // Complete execution
       dispatch(completeExecution(execution.id));
       dispatch(stopStreaming());

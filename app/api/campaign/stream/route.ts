@@ -47,10 +47,13 @@ export async function POST(request: NextRequest) {
         // Phase 0: Thinking
         sendEvent({ type: 'partial', message: 'Thinking...', });
         sendEvent({ type: 'partial', message: 'Analyzing requirements...', });
-        // random ticks
-        for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) {
-          await new Promise(resolve => setTimeout(resolve, 200 + Math.floor(Math.random() * 300)));
-          sendEvent({ type: 'partial', message: 'thinking_tick' });
+        // random ticks with thoughts
+        for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) {
+          await new Promise(resolve => setTimeout(resolve, 80 + Math.floor(Math.random() * 70)));
+          const thought = i % 2 === 0
+            ? `Clarifying goal based on query: "${query}"`
+            : 'Mapping channels and audience for best reach';
+          sendEvent({ type: 'partial', message: 'thinking_tick', tabs: { thoughts: [thought] } as any });
         }
 
         // Phase 1: Analyze - produce sources (placeholders)
@@ -60,7 +63,7 @@ export async function POST(request: NextRequest) {
           { title: 'Ecommerce Cart Recovery', url: 'https://example.com/cart-recovery', source: 'blog' },
         ];
         sendEvent({ type: 'partial', message: 'analyze_start', tabs: { sources } as any });
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise(resolve => setTimeout(resolve, 150));
 
         // Phase 2: Generate - stream answer text and images
         const images = [
@@ -80,11 +83,11 @@ export async function POST(request: NextRequest) {
         for (const chunk of answerChunks) {
           answerSoFar += chunk;
           sendEvent({ type: 'partial', message: 'generate_progress', tabs: { answer: answerSoFar } as any });
-          await new Promise(resolve => setTimeout(resolve, 250));
+          await new Promise(resolve => setTimeout(resolve, 120));
         }
 
         // Step 1: Generate name
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 150));
         campaignData.campaign.name = query.toLowerCase().includes('flash') 
           ? "Weekend Flash Sale" 
           : "Holiday Collection Launch";
@@ -111,7 +114,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Step 3: Generate channels
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 120));
         campaignData.campaign.channels = ["Email", "SMS", "WhatsApp"];
         sendEvent({ 
           type: 'partial', 
@@ -127,7 +130,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Step 4: Generate message
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise(resolve => setTimeout(resolve, 180));
         campaignData.campaign.message = "Get 20% off before Sunday ends! Complete your purchase now.";
         sendEvent({ 
           type: 'partial', 

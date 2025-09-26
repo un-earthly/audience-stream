@@ -40,11 +40,19 @@ export const tabsSlice = createSlice({
       const current = existing.sources ?? [];
       state[action.payload.messageId] = { ...existing, sources: [...current, ...action.payload.sources] };
     },
+    appendThoughts: (
+      state,
+      action: PayloadAction<{ messageId: string; thoughts: string[] }>
+    ) => {
+      const existing = state[action.payload.messageId] ?? {};
+      const current = existing.thoughts ?? [];
+      state[action.payload.messageId] = { ...existing, thoughts: [...current, ...action.payload.thoughts] };
+    },
     clearTabs: (state, action: PayloadAction<{ messageId: string }>) => {
       delete state[action.payload.messageId];
     },
   },
 });
 
-export const { setTabs, setAnswer, appendImages, appendSources, clearTabs } = tabsSlice.actions;
+export const { setTabs, setAnswer, appendImages, appendSources, appendThoughts, clearTabs } = tabsSlice.actions;
 export default tabsSlice.reducer;
