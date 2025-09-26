@@ -117,6 +117,7 @@ export interface TabsData {
   images?: string[];
   sources?: SourceLink[];
   thoughts?: ThoughtItem[];
+  feedback?: 'up' | 'down' | null;
 }
 
 export type PhaseEventType =
@@ -135,3 +136,67 @@ export type ExtendedStreamEvent = StreamEvent & {
   phase?: PhaseEventType;
   tabs?: TabsData;
 };
+export interface StatCard {
+  label: string;
+  value: string | number;
+  delta: string;
+  trend: "up" | "down" | "neutral";
+}
+
+export interface TimeSeriesData {
+  name: string;
+  reach: number;
+  impressions: number;
+  engagement: number;
+}
+
+export interface ChannelPerformance {
+  channel: string;
+  clicks: number;
+  conversions: number;
+}
+
+export interface CampaignRow {
+  name: string;
+  reach: number;
+  ctr: string;
+  conv: string;
+  revenue: string;
+}
+
+export interface ConversionRow {
+  id: string;
+  channel: string;
+  value: string;
+  time: string;
+}
+
+export interface AudienceShare {
+  name: string;
+  value: number;
+}
+
+export interface RadarData {
+  metric: string;
+  A: number;
+  fullMark: number;
+}
+
+export interface SourcePerformance {
+  source: string;
+  users: number;
+  conv: string;
+  aov: string;
+}
+
+export interface AudienceSegmentSummary {
+  segment: string;
+  size: number;
+  growth: string;
+}
+
+export interface Anomaly {
+  ts: string;
+  issue: string;
+  severity: "low" | "medium" | "high";
+}

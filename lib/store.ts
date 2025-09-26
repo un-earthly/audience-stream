@@ -5,6 +5,8 @@ import connectionsReducer from "./features/connections/connectionsSlice";
 import campaignReducer from "./features/campaign/campaignSlice";
 import authReducer from "./features/auth/authSlice";
 import tabsReducer from "./features/chat/tabsSlice";
+import uiReducer from "./features/chat/uiSlice";
+import historyReducer from "./features/chat/historySlice";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +16,8 @@ export const store = configureStore({
     connections: connectionsReducer,
     campaign: campaignReducer,
     tabs: tabsReducer,
+    chatUi: uiReducer,
+    history: historyReducer,
   },
 });
 

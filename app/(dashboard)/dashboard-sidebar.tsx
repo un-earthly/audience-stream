@@ -6,7 +6,8 @@ import {
   Users, 
   Target, 
   ChevronRight,
-  Plus
+  Plus,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,6 +76,16 @@ export function DashboardSidebar() {
             </Button>
           </div>
 
+          {/* Chat quick link */}
+          <div>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Open Chat
+              </Link>
+            </Button>
+          </div>
+
           {/* Navigation */}
           <div className="space-y-2">
             {sidebarSections.map((section) => {
@@ -128,7 +139,7 @@ export function DashboardSidebar() {
                   key={source.id} 
                   className={`cursor-pointer transition-all hover:shadow-md ${
                     source.status === "connected" 
-                      ? "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20" 
+                      ? "border-green-400/20 bg-green-500/5 dark:border-green-400/20 dark:bg-green-400/5" 
                       : ""
                   }`}
                   onClick={() => source.status === "disconnected" && handleConnectSource(source)}
@@ -146,8 +157,8 @@ export function DashboardSidebar() {
                       </div>
                       <div className={`w-2 h-2 rounded-full ${
                         source.status === "connected" 
-                          ? "bg-green-500" 
-                          : "bg-gray-300"
+                          ? "bg-green-400" 
+                          : "bg-muted"
                       }`} />
                     </div>
                   </CardContent>

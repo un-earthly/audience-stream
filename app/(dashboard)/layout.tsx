@@ -1,6 +1,7 @@
 import { DashboardNav } from "./dashboard-nav";
 import { DashboardSidebar } from "./dashboard-sidebar";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { Toaster } from "sonner";
 
 export default function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default function DashboardLayout({
             {children}
           </main>
         </div>
+        <Toaster richColors closeButton position="bottom-center" />
       </div>
     </AuthGuard>
   );

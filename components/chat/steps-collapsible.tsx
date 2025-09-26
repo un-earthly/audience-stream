@@ -13,14 +13,14 @@ interface StepsCollapsibleProps {
 
 export function StepsCollapsible({ execution }: StepsCollapsibleProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const completedSteps = execution.steps.filter(step => step.status === "completed").length;
   const runningStep = execution.steps.find(step => step.status === "running");
   const hasError = execution.steps.some(step => step.status === "error");
-  
+
   // Show current running step or summary
   const currentStep = runningStep || execution.steps[execution.currentStepIndex];
-  
+
   return (
     <div className="mt-3 border border-border/50 rounded-lg bg-muted/20">
       {/* Compact header */}
@@ -41,27 +41,27 @@ export function StepsCollapsible({ execution }: StepsCollapsibleProps) {
               <Check className="w-4 h-4 text-green-600" />
             )}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium">
-              {runningStep ? runningStep.title : 
-               execution.isRunning ? "Processing..." : 
-               "Analysis Complete"}
+              {runningStep ? runningStep.title :
+                execution.isRunning ? "Processing..." :
+                  "Analysis Complete"}
             </div>
             <div className="text-xs text-muted-foreground">
-              {execution.isRunning ? 
+              {execution.isRunning ?
                 `Step ${completedSteps + 1} of ${execution.steps.length}` :
                 `Completed ${completedSteps} steps`
               }
             </div>
           </div>
-          
+
           {/* Progress indicator */}
           <div className="flex items-center gap-2">
             <div className="w-16">
-              <Progress 
-                value={(completedSteps / execution.steps.length) * 100} 
-                className="h-1" 
+              <Progress
+                value={(completedSteps / execution.steps.length) * 100}
+                className="h-1"
               />
             </div>
             {isExpanded ? (
@@ -109,8 +109,8 @@ export function StepsCollapsible({ execution }: StepsCollapsibleProps) {
                         step.status === "completed"
                           ? "secondary"
                           : step.status === "running"
-                          ? "default"
-                          : "destructive"
+                            ? "default"
+                            : "destructive"
                       }
                       className="text-xs px-1.5 py-0"
                     >
@@ -118,7 +118,7 @@ export function StepsCollapsible({ execution }: StepsCollapsibleProps) {
                     </Badge>
                   )}
                 </div>
-                
+
                 <div className="text-xs text-muted-foreground mt-0.5">
                   {step.description}
                 </div>

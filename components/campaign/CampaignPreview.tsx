@@ -52,9 +52,15 @@ export function CampaignPreview() {
         <h3 className="text-lg font-semibold text-gray-900">
           Campaign Preview
         </h3>
-        <Button type="button" onClick={handleExport}>
-          <Download className="w-4 h-4 mr-2" />
-          Export JSON
+        <Button
+          type="button"
+          onClick={handleExport}
+          variant="outline"
+          size="icon"
+          title="Download campaign JSON"
+          aria-label="Download campaign JSON"
+        >
+          <Download className="w-4 h-4" />
         </Button>
       </div>
 

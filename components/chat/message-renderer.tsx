@@ -1,8 +1,7 @@
 "use client";
 import React from "react";
-import { User, Sparkles } from "lucide-react";
+import { User, Sparkles, Edit3, Copy, Download, Check, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { ChatMessage } from "@/lib/types";
@@ -23,6 +22,29 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
     const [isEditing, setIsEditing] = React.useState(false);
     const [editValue, setEditValue] = React.useState(message.content);
     const isSystem = message.type === "system";
+    const [copied, setCopied] = React.useState(false);
+
+    const copyText = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch (_) {
+            // ignore
+        }
+    };
+
+    const downloadText = (text: string, filenamePrefix = "message") => {
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${filenamePrefix}-${message.id}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <div className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -41,7 +63,7 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
             <div className={`max-w-[80%] ${isUser ? "order-first" : ""}`}>
                 {/* Message content */}
                 <Card
-                    className={`p-4 ${isUser
+                    className={`group p-4 ${isUser
                         ? "bg-primary text-primary-foreground"
                         : isSystem
                             ? "bg-muted"
@@ -49,7 +71,7 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                         }`}
                 >
                     {isUser && (
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start relative justify-between gap-2">
                             {!isEditing ? (
                                 <div className="prose prose-sm max-w-none dark:prose-invert">
                                     {message.content}
@@ -62,47 +84,7 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                                     rows={3}
                                 />
                             )}
-                            <div className="flex-shrink-0">
-                                {!isEditing ? (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs"
-                                        onClick={() => setIsEditing(true)}
-                                    >
-                                        Edit
-                                    </Button>
-                                ) : (
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-xs"
-                                            onClick={() => {
-                                                setIsEditing(false);
-                                                setEditValue(message.content);
-                                            }}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="text-xs"
-                                            onClick={() => {
-                                                if (editValue.trim().length === 0) return;
-                                                dispatch({
-                                                    type: 'chat/updateMessage',
-                                                    payload: { id: message.id, content: editValue }
-                                                });
-                                                setIsEditing(false);
-                                            }}
-                                        >
-                                            Save
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
+
                         </div>
                     )}
                     {!isUser && message.content && (
@@ -111,25 +93,101 @@ export function MessageRenderer({ message, index }: MessageRendererProps) {
                             {message.streaming && (
                                 <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
                             )}
+                            {/* Perplexity-like tabs */}
+                            {!isUser && (
+                                <div className="mt-4">
+                                    <MessageTabs messageId={message.id} jsonData={message.jsonData} />
+                                </div>
+                            )}
                         </div>
                     )}
                 </Card>
 
-                {/* Steps visualization - only render standalone if tabs are not shown */}
-                {execution && execution.steps.length > 0 && isUser && (
-                    <StepsCollapsible execution={execution} />
-                )}
 
-                {/* Perplexity-like tabs */}
-                {!isUser && (
-                    <div className="mt-4">
-                        <MessageTabs messageId={message.id} jsonData={message.jsonData} />
+
+                {/* Timestamp + Actions */}
+                <div className="text-xs gap-2 flex items-center justify-between text-muted-foreground mt-2">
+                    <div>{new Date(message.timestamp).toLocaleTimeString()}</div>
+                    <div className="flex items-center gap-3">
+                        {/* Common: Copy */}
+                        <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => copyText(isEditing ? editValue : message.content)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') copyText(isEditing ? editValue : message.content); }}
+                            title={copied ? "Copied" : "Copy"}
+                            aria-label="Copy message"
+                            className="inline-flex cursor-pointer items-center text-foreground/70 hover:text-foreground transition-colors"
+                        >
+                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </span>
+
+                        {/* Assistant/System: Download */}
+                        {!isUser && (
+                            <span
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => downloadText(message.content, isSystem ? 'system' : 'assistant')}
+                                onKeyDown={(e) => { if (e.key === 'Enter') downloadText(message.content, isSystem ? 'system' : 'assistant'); }}
+                                title="Download"
+                                aria-label="Download message"
+                                className="inline-flex cursor-pointer items-center text-foreground/70 hover:text-foreground transition-colors"
+                            >
+                                <Download className="h-4 w-4" />
+                            </span>
+                        )}
+
+                        {/* User: Edit / Save / Cancel */}
+                        {isUser && !isEditing && (
+                            <span
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setIsEditing(true)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') setIsEditing(true); }}
+                                title="Edit"
+                                aria-label="Edit message"
+                                className="inline-flex cursor-pointer items-center text-foreground/70 hover:text-foreground transition-colors"
+                            >
+                                <Edit3 className="h-4 w-4" />
+                            </span>
+                        )}
+                        {isUser && isEditing && (
+                            <>
+                                <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => { setIsEditing(false); setEditValue(message.content); }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { setIsEditing(false); setEditValue(message.content); } }}
+                                    title="Cancel edit"
+                                    aria-label="Cancel edit"
+                                    className="inline-flex cursor-pointer items-center text-foreground/70 hover:text-foreground transition-colors"
+                                >
+                                    <X className="h-4 w-4" />
+                                </span>
+                                <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => {
+                                        if (editValue.trim().length === 0) return;
+                                        dispatch({ type: 'chat/updateMessage', payload: { id: message.id, content: editValue } });
+                                        setIsEditing(false);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            if (editValue.trim().length === 0) return;
+                                            dispatch({ type: 'chat/updateMessage', payload: { id: message.id, content: editValue } });
+                                            setIsEditing(false);
+                                        }
+                                    }}
+                                    title="Save edit"
+                                    aria-label="Save edit"
+                                    className="inline-flex cursor-pointer items-center text-foreground/70 hover:text-foreground transition-colors"
+                                >
+                                    <Check className="h-4 w-4" />
+                                </span>
+                            </>
+                        )}
                     </div>
-                )}
-
-                {/* Timestamp */}
-                <div className="text-xs text-muted-foreground mt-2">
-                    {new Date(message.timestamp).toLocaleTimeString()}
                 </div>
             </div>
 

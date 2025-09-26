@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useAppSelector } from "@/lib/hooks";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { StepsCollapsible } from "./steps-collapsible";
-import { Brain, Clock } from "lucide-react";
-
+import { Brain, Clock, Copy, Eye, EyeOff, ThumbsUp, ThumbsDown, Check, ChevronDown } from "lucide-react";
+import { setFeedback } from "@/lib/features/chat/tabsSlice";
+import { toast } from "sonner";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 interface MessageTabsProps {
   messageId: string;
   jsonData?: unknown;
@@ -17,10 +22,22 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
   const tabs = useAppSelector((s) => s.tabs[messageId]);
   const { executions } = useAppSelector((s) => s.steps);
   const execution = executions.find((e) => e.messageId === messageId);
+  const dispatch = useAppDispatch();
   const [value, setValue] = useState<string>("answer");
   const [showThoughts, setShowThoughts] = useState<boolean>(true);
   const { isStreaming, currentStreamingId } = useAppSelector((s) => s.chat);
   const thinkingActive = isStreaming && currentStreamingId === messageId;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(tabs?.answer ?? "");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (_) {
+      // ignore
+    }
+  };
 
   return (
     <Tabs value={value} onValueChange={setValue} className="mt-4">
@@ -32,51 +49,62 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
       </TabsList>
 
       <TabsContent value="answer">
-        <Card className="p-4 space-y-4">
+        <div className="p-4 space-y-4">
           <div className="flex items-center justify-between gap-2">
             <div className="text-sm font-medium">AI Answer</div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => navigator.clipboard.writeText(tabs?.answer ?? "")}
+            <div className="flex items-center gap-3">
+              {/* Feedback icons */}
+              <span
+                role="button"
+                tabIndex={0}
+                title="Thumbs up"
+                aria-label="Thumbs up"
+                className={`inline-flex cursor-pointer items-center transition-colors ${tabs?.feedback === 'up' ? 'text-foreground' : 'text-foreground/70 hover:text-foreground'}`}
+                onClick={() => { dispatch(setFeedback({ messageId, feedback: tabs?.feedback === 'up' ? null : 'up' })); toast.success(tabs?.feedback === 'up' ? 'Removed feedback' : 'Thanks for the thumbs up!'); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { dispatch(setFeedback({ messageId, feedback: tabs?.feedback === 'up' ? null : 'up' })); toast.success(tabs?.feedback === 'up' ? 'Removed feedback' : 'Thanks for the thumbs up!'); } }}
               >
-                Copy
-              </Button>
-              {tabs?.thoughts && tabs.thoughts.length > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setShowThoughts((v) => !v)}
-                >
-                  {showThoughts ? 'Hide thoughts' : 'Show thoughts'}
-                </Button>
-              )}
+                <ThumbsUp className="w-4 h-4" />
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                title="Thumbs down"
+                aria-label="Thumbs down"
+                className={`inline-flex cursor-pointer items-center transition-colors ${tabs?.feedback === 'down' ? 'text-foreground' : 'text-foreground/70 hover:text-foreground'}`}
+                onClick={() => { dispatch(setFeedback({ messageId, feedback: tabs?.feedback === 'down' ? null : 'down' })); toast.message(tabs?.feedback === 'down' ? 'Removed feedback' : 'Thanks for the feedback!'); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { dispatch(setFeedback({ messageId, feedback: tabs?.feedback === 'down' ? null : 'down' })); toast.message(tabs?.feedback === 'down' ? 'Removed feedback' : 'Thanks for the feedback!'); } }}
+              >
+                <ThumbsDown className="w-4 h-4" />
+              </span>
+
+              {/* Copy */}
+              <span
+                role="button"
+                tabIndex={0}
+                title={copied ? 'Copied' : 'Copy answer'}
+                aria-label="Copy answer"
+                className="inline-flex cursor-pointer items-center text-foreground/70 hover:text-foreground transition-colors"
+                onClick={handleCopy}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleCopy(); }}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </span>
+
             </div>
           </div>
           {/* Thinking / Thoughts block with inline toggle */}
           {tabs?.thoughts && tabs.thoughts.length > 0 && (
-            <div className="text-xs border rounded-md p-2 bg-muted/30">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2 font-medium">
-                  <Brain className="w-3 h-3" />
-                  <span>{thinkingActive ? 'Thinking' : 'Thoughts'}</span>
+            <Collapsible className="text-xs border rounded-md p-2 bg-muted/30">
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Brain className="w-3 h-3" />
+                    <span>{thinkingActive ? 'Thinking' : 'Thoughts'}</span>
+                  </div>
+                  <ChevronDown className="w-3 h-3" />
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 px-2 py-0"
-                  onClick={() => setShowThoughts((v) => !v)}
-                >
-                  {showThoughts ? 'Hide' : 'Show'}
-                </Button>
-              </div>
-              {showThoughts && (
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <ul className="space-y-1">
                   {tabs.thoughts.map((t, i) => (
                     <li key={i} className="flex items-center gap-2 text-muted-foreground">
@@ -86,8 +114,8 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           )}
           <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
             {tabs?.answer ?? "Generating answer..."}
@@ -95,18 +123,14 @@ export function MessageTabs({ messageId, jsonData }: MessageTabsProps) {
           {jsonData != null && (
             <div>
               <div className="text-sm font-medium mb-1">Campaign JSON</div>
-              {/* Reuse the existing JsonBlock for nice formatting */}
-              {/* @ts-ignore component import resolution at runtime */}
-              {/**/}
               <div>
-                {/* We'll import dynamically in parent; for now just stringify */}
                 <pre className="text-xs overflow-x-auto bg-background p-3 rounded-md border">
-{typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData, null, 2)}
+                  {typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData, null, 2)}
                 </pre>
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </TabsContent>
 
       <TabsContent value="images">

@@ -32,4 +32,6 @@ export const PERSIST_KEYS = {
   auth: "audiencestream/auth",
   campaign: "audiencestream/campaign",
   connections: "audiencestream/connections",
+  chat_ui: "audiencestream/chat_ui",
+  chat_history: "audiencestream/chat_history",
 } as const;
