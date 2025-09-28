@@ -2,8 +2,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAppSelector } from "@/lib/hooks";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { Loader2 } from "lucide-react";
+import { loginFailure, loginStart, loginSuccess } from "@/lib/features/auth/authSlice";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -11,7 +12,36 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
   const router = useRouter();
+
+  useEffect(() => {
+    // Try to hydrate auth state from server session cookie
+    // only when not already authenticated
+    if (!isAuthenticated) {
+      let cancelled = false;
+      const hydrate = async () => {
+        dispatch(loginStart());
+        try {
+          const res = await fetch("/api/auth/me", { cache: "no-store" });
+          if (!cancelled && res.ok) {
+            const data = await res.json();
+            if (data?.user) {
+              dispatch(loginSuccess(data.user));
+              return;
+            }
+          }
+          if (!cancelled) dispatch(loginFailure());
+        } catch {
+          if (!cancelled) dispatch(loginFailure());
+        }
+      };
+      hydrate();
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [dispatch, isAuthenticated]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -35,4 +65,3 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   return <>{children}</>;
-}

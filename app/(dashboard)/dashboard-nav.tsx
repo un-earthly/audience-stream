@@ -28,9 +28,15 @@ export function DashboardNav() {
   const { user } = useAppSelector((state) => state.auth);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {
-    dispatch(logout());
-    router.push("/signin");
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore network errors and still clear client state
+    } finally {
+      dispatch(logout());
+      router.push("/signin");
+    }
   };
 
   return (
@@ -108,11 +114,11 @@ export function DashboardNav() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>

@@ -22,23 +22,25 @@ export function SignInForm() {
     setIsLoading(true);
     dispatch(loginStart());
 
-    // Simulate login process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Mock user data
-    const mockUser = {
-      id: "user_123",
-      name: "Alex Johnson",
-      email: email || "alex@example.com",
-      avatar: "",
-      plan: "pro" as const,
-    };
-
-    dispatch(loginSuccess(mockUser));
-    setIsLoading(false);
-    
-    // Redirect to dashboard
-    router.push("/dashboard");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email || "alex@example.com", password, provider }),
+      });
+      if (!res.ok) {
+        throw new Error("Login failed");
+      }
+      const data = await res.json();
+      if (data?.user) {
+        dispatch(loginSuccess(data.user));
+        router.push("/dashboard");
+      }
+    } catch (e) {
+      // basic fallback: remain on page
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
